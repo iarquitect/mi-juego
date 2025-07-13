@@ -180,7 +180,7 @@ function scrollHeader() {
 }
 
 // Scroll up
-function scrollUp() {
+function handleScrollUp() {
     if (this.scrollY >= 350) {
         scrollUp.classList.add('show-scroll');
     } else {
@@ -480,8 +480,8 @@ navLinks.forEach(link => {
 });
 
 // Scroll events
-window.addEventListener('scroll', throttle(scrollHeader, 100));
-window.addEventListener('scroll', throttle(scrollUp, 100));
+window.addEventListener('scroll', throttle(handleScrollUp, 100));
+window.addEventListener('scroll', throttle(handleScrollUp, 100));
 window.addEventListener('scroll', throttle(activeLink, 100));
 window.addEventListener('scroll', debounce(animateOnScroll, 100));
 
