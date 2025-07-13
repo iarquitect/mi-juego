@@ -708,3 +708,426 @@ window.MatiasVillarruel = {
     trackEvent,
     validateForm
 }; 
+
+// Game Configuration
+const GAME_CONFIG = {
+    GRAVITY: 0.5,
+    JUMP_FORCE: -12,
+    PLAYER_SPEED: 4,
+    FRICTION: 0.8,
+    PLATFORM_WIDTH: 120,
+    PLATFORM_HEIGHT: 8,
+    PLATFORM_SPACING: 80,
+    INITIAL_PLATFORMS: 15,
+    SCORE_MULTIPLIER: 10
+};
+
+// Game State Management
+class GameState {
+    constructor() {
+        this.running = true;
+        this.score = 0;
+        this.lives = 3;
+        this.hiScore = 15200;
+        this.gameSpeed = 2;
+    }
+
+    reset() {
+        this.running = true;
+        this.score = 0;
+        this.lives = 3;
+    }
+
+    updateHiScore() {
+        if (this.score > this.hiScore) {
+            this.hiScore = this.score;
+            return true;
+        }
+        return false;
+    }
+}
+
+// Player Class
+class Player {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.x = canvas.width / 2;
+        this.y = canvas.height - 200;
+        this.width = 24;
+        this.height = 32;
+        this.velY = 0;
+        this.velX = 0;
+        this.jumping = false;
+        this.grounded = false;
+        this.color = '#4488ff';
+    }
+
+    reset() {
+        this.x = this.canvas.width / 2;
+        this.y = this.canvas.height - 200;
+        this.velY = 0;
+        this.velX = 0;
+        this.grounded = false;
+        this.jumping = false;
+    }
+
+    update(keys, platforms) {
+        // Horizontal movement
+        if (keys['ArrowLeft']) {
+            this.velX = -GAME_CONFIG.PLAYER_SPEED;
+        } else if (keys['ArrowRight']) {
+            this.velX = GAME_CONFIG.PLAYER_SPEED;
+        } else {
+            this.velX *= GAME_CONFIG.FRICTION;
+        }
+
+        // Apply gravity
+        this.velY += GAME_CONFIG.GRAVITY;
+
+        // Update position
+        this.x += this.velX;
+        this.y += this.velY;
+
+        // Horizontal boundaries
+        this.x = Math.max(0, Math.min(this.x, this.canvas.width - this.width));
+
+        // Platform collision detection
+        this.checkPlatformCollisions(platforms);
+    }
+
+    checkPlatformCollisions(platforms) {
+        this.grounded = false;
+        
+        for (let platform of platforms) {
+            if (this.x < platform.x + platform.width &&
+                this.x + this.width > platform.x &&
+                this.y + this.height > platform.y &&
+                this.y + this.height < platform.y + platform.height + 10 &&
+                this.velY > 0) {
+                
+                this.y = platform.y - this.height;
+                this.velY = 0;
+                this.grounded = true;
+                this.jumping = false;
+                break;
+            }
+        }
+    }
+
+    jump() {
+        if (this.grounded) {
+            this.velY = GAME_CONFIG.JUMP_FORCE;
+            this.jumping = true;
+            this.grounded = false;
+        }
+    }
+
+    draw(ctx) {
+        // Main body
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+        
+        // Face
+        ctx.fillStyle = '#ffddaa';
+        ctx.fillRect(this.x + 6, this.y + 4, 12, 8);
+        
+        // Cap
+        ctx.fillStyle = '#ff4444';
+        ctx.fillRect(this.x + 4, this.y, 16, 6);
+        
+        // Shoes
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(this.x + 2, this.y + 28, 8, 4);
+        ctx.fillRect(this.x + 14, this.y + 28, 8, 4);
+    }
+}
+
+// Platform Manager
+class PlatformManager {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.platforms = [];
+        this.createInitialPlatforms();
+    }
+
+    createInitialPlatforms() {
+        this.platforms = [];
+        
+        // Initial platform where player spawns
+        this.platforms.push({
+            x: this.canvas.width / 2 - GAME_CONFIG.PLATFORM_WIDTH / 2,
+            y: this.canvas.height - 150,
+            width: GAME_CONFIG.PLATFORM_WIDTH,
+            height: GAME_CONFIG.PLATFORM_HEIGHT,
+            color: '#ff0044'
+        });
+        
+        // Additional platforms
+        for (let i = 1; i < GAME_CONFIG.INITIAL_PLATFORMS; i++) {
+            this.platforms.push({
+                x: Math.random() * (this.canvas.width - GAME_CONFIG.PLATFORM_WIDTH),
+                y: this.canvas.height - 150 - (i * GAME_CONFIG.PLATFORM_SPACING),
+                width: GAME_CONFIG.PLATFORM_WIDTH,
+                height: GAME_CONFIG.PLATFORM_HEIGHT,
+                color: '#ff0044'
+            });
+        }
+    }
+
+    update(playerY, canvasHeight) {
+        // Generate new platforms when player goes up
+        while (this.platforms[this.platforms.length - 1].y > -100) {
+            this.platforms.push({
+                x: Math.random() * (this.canvas.width - GAME_CONFIG.PLATFORM_WIDTH),
+                y: this.platforms[this.platforms.length - 1].y - GAME_CONFIG.PLATFORM_SPACING,
+                width: GAME_CONFIG.PLATFORM_WIDTH,
+                height: GAME_CONFIG.PLATFORM_HEIGHT,
+                color: '#ff0044'
+            });
+        }
+        
+        // Remove platforms that are off screen
+        this.platforms = this.platforms.filter(platform => platform.y < canvasHeight + 100);
+    }
+
+    moveWorld(scoreIncrease) {
+        this.platforms.forEach(platform => {
+            platform.y += scoreIncrease;
+        });
+    }
+
+    draw(ctx) {
+        this.platforms.forEach(platform => {
+            // Neon glow effect
+            ctx.shadowColor = platform.color;
+            ctx.shadowBlur = 20;
+            
+            // Main platform
+            ctx.fillStyle = platform.color;
+            ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+            
+            // Inner glow
+            ctx.fillStyle = '#ff4488';
+            ctx.fillRect(platform.x + 2, platform.y + 1, platform.width - 4, platform.height - 2);
+            
+            ctx.shadowBlur = 0;
+        });
+    }
+}
+
+// Background Manager
+class BackgroundManager {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.backgroundImg = new Image();
+        this.loadBackground();
+    }
+
+    loadBackground() {
+        // Fallback SVG background with Pompidou-inspired design
+        this.backgroundImg.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8ZGVmcz4KICAgIDxwYXR0ZXJuIGlkPSJncmlkIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CiAgICAgIDxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjNDA4MEZGIiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgICA8bGluZSB4MT0iMCIgeTE9IjAiIHgyPSIxMDAiIHkyPSIxMDAiIHN0cm9rZT0iI0ZGRkZGRiIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgICAgIDxsaW5lIHgxPSIxMDAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEwMCIgc3Ryb2tlPSIjRkZGRkZGIiBzdHJva2Utd2lkdGg9IjIiLz4KICAgIDwvcGF0dGVybj4KICA8L2RlZnM+CiAgCiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPgogIAogIDxsaW5lIHgxPSIxMDAiIHkxPSI1MDAiIHgyPSI3MDAiIHkyPSIxMDAiIHN0cm9rZT0iI0ZGMDA0NCIgc3Ryb2tlLXdpZHRoPSIxNSIvPgogIDxyZWN0IHg9Ijk1IiB5PSI0OTUiIHdpZHRoPSIxMCIgaGVpZ2h0PSIxMCIgZmlsbD0iI0ZGMDA0NCIvPgogIDxyZWN0IHg9IjY5NSIgeT0iOTUiIHdpZHRoPSIxMCIgaGVpZ2h0PSIxMCIgZmlsbD0iI0ZGMDA0NCIvPgogIAogIDxyZWN0IHg9IjAiIHk9IjU1MCIgd2lkdGg9IjgwMCIgaGVpZ2h0PSI1MCIgZmlsbD0iIzMzMzMzMyIvPgogIDxyZWN0IHg9IjUwIiB5PSI1NjAiIHdpZHRoPSIxMCIgaGVpZ2h0PSIxMCIgZmlsbD0iI0ZGNDQ0NCIvPgogIDxyZWN0IHg9IjEwMCIgeT0iNTcwIiB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiM0NDg4RkYiLz4KICA8cmVjdCB4PSIxNTAiIHk9IjU2NSIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBmaWxsPSIjRkY0NDQ0Ii8+CiAgPHJlY3QgeD0iMjAwIiB5PSI1NzUiIHdpZHRoPSIxMCIgaGVpZ2h0PSIxMCIgZmlsbD0iIzQ0ODhGRiIvPgo8L3N2Zz4K';
+    }
+
+    draw(ctx) {
+        if (this.backgroundImg.complete && this.backgroundImg.naturalWidth > 0) {
+            // Draw background image
+            ctx.drawImage(this.backgroundImg, 0, 0, this.canvas.width, this.canvas.height);
+            
+            // Add night overlay
+            ctx.fillStyle = 'rgba(0, 0, 40, 0.3)';
+            ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        } else {
+            // Fallback background
+            ctx.fillStyle = '#000033';
+            ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            // Draw simplified Pompidou structure
+            ctx.strokeStyle = '#4488ff';
+            ctx.lineWidth = 3;
+            
+            // Steel structure
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 6; j++) {
+                    let x = (this.canvas.width / 8) * i;
+                    let y = (this.canvas.height / 6) * j;
+                    ctx.strokeRect(x, y, this.canvas.width / 8, this.canvas.height / 6);
+                    
+                    // Diagonal crosses
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + this.canvas.width / 8, y + this.canvas.height / 6);
+                    ctx.moveTo(x + this.canvas.width / 8, y);
+                    ctx.lineTo(x, y + this.canvas.height / 6);
+                    ctx.stroke();
+                }
+            }
+            
+            // Red diagonal escalator
+            ctx.strokeStyle = '#ff0044';
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.moveTo(this.canvas.width * 0.2, this.canvas.height * 0.8);
+            ctx.lineTo(this.canvas.width * 0.8, this.canvas.height * 0.2);
+            ctx.stroke();
+        }
+    }
+}
+
+// UI Manager
+class UIManager {
+    constructor() {
+        this.scoreElement = document.getElementById('score');
+        this.hiScoreElement = document.getElementById('hiScore');
+        this.livesElement = document.getElementById('lives');
+        this.gameOverElement = document.getElementById('gameOver');
+        this.finalScoreElement = document.getElementById('finalScore');
+    }
+
+    updateScore(score) {
+        this.scoreElement.textContent = `SCORE: ${score.toString().padStart(6, '0')}`;
+    }
+
+    updateHiScore(hiScore) {
+        this.hiScoreElement.textContent = `HI-SCORE: ${hiScore.toString().padStart(6, '0')}`;
+    }
+
+    updateLives(lives) {
+        this.livesElement.textContent = `LIVES: x${lives}`;
+    }
+
+    showGameOver(score) {
+        this.finalScoreElement.textContent = score;
+        this.gameOverElement.style.display = 'block';
+    }
+
+    hideGameOver() {
+        this.gameOverElement.style.display = 'none';
+    }
+}
+
+// Main Game Class
+class PompidouLeapGame {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.keys = {};
+        
+        this.gameState = new GameState();
+        this.player = new Player(this.canvas);
+        this.platformManager = new PlatformManager(this.canvas);
+        this.backgroundManager = new BackgroundManager(this.canvas);
+        this.uiManager = new UIManager();
+        
+        this.setupCanvas();
+        this.setupEventListeners();
+        this.start();
+    }
+
+    setupCanvas() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    }
+
+    setupEventListeners() {
+        // Keyboard events
+        window.addEventListener('keydown', (e) => {
+            this.keys[e.key] = true;
+            if (e.key === ' ') {
+                e.preventDefault();
+                this.player.jump();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            this.keys[e.key] = false;
+        });
+
+        // Window resize
+        window.addEventListener('resize', () => {
+            this.setupCanvas();
+        });
+    }
+
+    update() {
+        if (!this.gameState.running) return;
+
+        // Update player
+        this.player.update(this.keys, this.platformManager.platforms);
+
+        // Check if player is going up (scoring)
+        if (this.player.y < this.canvas.height / 2) {
+            let scoreIncrease = Math.floor((this.canvas.height / 2 - this.player.y) / GAME_CONFIG.SCORE_MULTIPLIER);
+            this.gameState.score += scoreIncrease;
+            
+            // Move world down
+            this.player.y += scoreIncrease;
+            this.platformManager.moveWorld(scoreIncrease);
+            
+            // Update platforms
+            this.platformManager.update(this.player.y, this.canvas.height);
+        }
+
+        // Check game over
+        if (this.player.y > this.canvas.height + 100) {
+            this.gameOver();
+        }
+    }
+
+    draw() {
+        // Clear canvas
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Draw everything
+        this.backgroundManager.draw(this.ctx);
+        this.platformManager.draw(this.ctx);
+        this.player.draw(this.ctx);
+    }
+
+    updateUI() {
+        this.uiManager.updateScore(this.gameState.score);
+        this.uiManager.updateLives(this.gameState.lives);
+        
+        if (this.gameState.updateHiScore()) {
+            this.uiManager.updateHiScore(this.gameState.hiScore);
+        }
+    }
+
+    gameOver() {
+        this.gameState.running = false;
+        this.uiManager.showGameOver(this.gameState.score);
+    }
+
+    restart() {
+        this.gameState.reset();
+        this.player.reset();
+        this.platformManager.createInitialPlatforms();
+        this.uiManager.hideGameOver();
+        this.start();
+    }
+
+    start() {
+        this.gameLoop();
+    }
+
+    gameLoop() {
+        if (!this.gameState.running) return;
+        
+        this.update();
+        this.draw();
+        this.updateUI();
+        
+        requestAnimationFrame(() => this.gameLoop());
+    }
+}
+
+// Initialize game when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    window.game = new PompidouLeapGame();
+});
+
+// Global restart function for the button
+function restartGame() {
+    if (window.game) {
+        window.game.restart();
+    }
+} 
