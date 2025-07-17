@@ -44,9 +44,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let lives = 3;
     let level = 1;
     let barrelTimer = 0;
-    let barrelInterval = 120; // Frames between barrels (2 seconds at 60fps)
+    let barrelInterval = 180; // Frames between barrels (3 seconds at 60fps) - SLOWER
 
-    // Player properties - MUCH SLOWER MOVEMENT
+    // Player properties - SLOW MOTION
     const player = {
         x: 50,
         y: 500,
@@ -59,7 +59,8 @@ document.addEventListener('DOMContentLoaded', function() {
         frameCount: 0,
         direction: 1, // 1 = right, -1 = left
         jumping: false,
-        moveSpeed: 1.5 // MUCH slower: 1.5 pixels per frame (90 pixels per second)
+        moveSpeed: 1.5, // 1.5 pixels per frame (90 pixels per second)
+        jumpSpeed: -8 // MUCH slower jump (was -15)
     };
 
     // Game objects - STAIR-LIKE PLATFORMS
@@ -158,24 +159,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function createBarrel() {
-        // SLOWER, PREDICTABLE BARREL DROPPING
+        // SLOW MOTION BARREL DROPPING
         barrelTimer++;
         
         if (barrelTimer >= barrelInterval) {
             barrelTimer = 0;
             
-            // Create barrel from right side with BOUNCING PHYSICS
+            // Create barrel from right side with ENHANCED BOUNCING PHYSICS
             barrels.push({
                 x: canvas.width + 30, // Start off-screen to the right
                 y: 0,
                 width: 30,
                 height: 30,
                 speedY: 0, // Start with no vertical speed
-                speedX: -1.3, // Slower horizontal movement: 1.3 pixels per frame
-                gravity: 0.3, // Gravity for bouncing
+                speedX: -0.8, // MUCH slower horizontal movement: 0.8 pixels per frame
+                gravity: 0.15, // MUCH slower gravity for slow motion
                 bounceCount: 0, // Track number of bounces
-                maxBounces: 4, // Maximum number of bounces
-                bounceFactor: 0.7 // Energy loss on bounce (70% retained)
+                maxBounces: 6, // More bounces for longer arcs
+                bounceFactor: 0.85, // Higher bounce factor (85% retained) for longer arcs
+                horizontalBounce: 0.9 // Horizontal bounce factor for side-to-side movement
             });
         }
     }
@@ -184,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
         for (let i = barrels.length - 1; i >= 0; i--) {
             const barrel = barrels[i];
             
-            // Apply gravity for bouncing physics
+            // Apply gravity for bouncing physics (SLOW MOTION)
             barrel.speedY += barrel.gravity;
             
             // Update position
@@ -195,16 +197,17 @@ document.addEventListener('DOMContentLoaded', function() {
             if (barrel.y + barrel.height >= canvas.height - 50) { // Ground level
                 barrel.y = canvas.height - 50 - barrel.height;
                 barrel.speedY = -barrel.speedY * barrel.bounceFactor; // Bounce with energy loss
+                barrel.speedX *= barrel.horizontalBounce; // Slight horizontal bounce effect
                 barrel.bounceCount++;
                 
                 // Stop bouncing after max bounces or if speed is too low
-                if (barrel.bounceCount >= barrel.maxBounces || Math.abs(barrel.speedY) < 0.5) {
+                if (barrel.bounceCount >= barrel.maxBounces || Math.abs(barrel.speedY) < 0.3) {
                     barrel.speedY = 0;
                     barrel.y = canvas.height - 50 - barrel.height; // Rest on ground
                 }
             }
             
-            // Check for bounce on platforms
+            // Check for bounce on platforms with ENHANCED ARC PHYSICS
             for (const platform of platforms) {
                 if (barrel.x < platform.x + platform.width &&
                     barrel.x + barrel.width > platform.x &&
@@ -214,10 +217,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     barrel.y = platform.y - barrel.height;
                     barrel.speedY = -barrel.speedY * barrel.bounceFactor; // Bounce with energy loss
+                    
+                    // Add horizontal bounce effect for more pronounced arcs
+                    if (barrel.bounceCount < 3) {
+                        barrel.speedX *= barrel.horizontalBounce; // Bounce horizontally too
+                    }
+                    
                     barrel.bounceCount++;
                     
                     // Stop bouncing after max bounces or if speed is too low
-                    if (barrel.bounceCount >= barrel.maxBounces || Math.abs(barrel.speedY) < 0.5) {
+                    if (barrel.bounceCount >= barrel.maxBounces || Math.abs(barrel.speedY) < 0.3) {
                         barrel.speedY = 0;
                         barrel.y = platform.y - barrel.height; // Rest on platform
                     }
@@ -252,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updatePlayer() {
-        // Handle input - MUCH SLOWER MOVEMENT
+        // Handle input - SLOW MOTION
         if (keys['ArrowLeft']) {
             player.speedX = -player.moveSpeed; // 1.5 pixels per frame
             player.direction = -1;
@@ -264,14 +273,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         if (keys['Space'] && player.onGround) {
-            player.speedY = -15;
+            player.speedY = player.jumpSpeed; // MUCH slower jump (-8 instead of -15)
             player.onGround = false;
             player.jumping = true;
         }
         
-        // Apply gravity
+        // Apply gravity (SLOWER)
         if (!player.onGround) {
-            player.speedY += 0.8;
+            player.speedY += 0.4; // Reduced from 0.8 for slower fall
         }
         
         // Update position
@@ -311,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function() {
             player.x = 50;
             player.y = 500;
             // Make game slightly harder each level
-            barrelInterval = Math.max(60, barrelInterval - 10); // Faster barrels
+            barrelInterval = Math.max(120, barrelInterval - 15); // Slightly faster barrels
             updateUI();
         }
     }
