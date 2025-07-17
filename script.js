@@ -2,6 +2,14 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, initializing game...');
     
+    // Debug: List all elements with IDs to see what's available
+    console.log('=== DEBUGGING DOM ELEMENTS ===');
+    const allElements = document.querySelectorAll('[id]');
+    console.log('All elements with IDs:', allElements);
+    allElements.forEach(el => {
+        console.log(`Element with ID "${el.id}":`, el);
+    });
+    
     // Game variables - with detailed error checking
     const canvas = document.getElementById('gameCanvas');
     console.log('Canvas found:', canvas);
@@ -87,15 +95,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Button event listeners with error checking
     try {
-        startButton.addEventListener('click', startGame);
-        console.log('Start button listener added');
+        if (startButton) {
+            startButton.addEventListener('click', startGame);
+            console.log('Start button listener added');
+        } else {
+            console.error('Start button is null, cannot add listener');
+        }
     } catch (error) {
         console.error('Error adding start button listener:', error);
     }
 
     try {
-        pauseButton.addEventListener('click', togglePause);
-        console.log('Pause button listener added');
+        if (pauseButton) {
+            pauseButton.addEventListener('click', togglePause);
+            console.log('Pause button listener added');
+        } else {
+            console.error('Pause button is null, cannot add listener');
+        }
     } catch (error) {
         console.error('Error adding pause button listener:', error);
     }
