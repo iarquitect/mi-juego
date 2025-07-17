@@ -1,10 +1,16 @@
 // Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Game variables
+    console.log('DOM loaded, initializing game...');
+    
+    // Game variables - with detailed error checking
     const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
+    console.log('Canvas found:', canvas);
+    
     const startButton = document.getElementById('startButton');
+    console.log('Start button found:', startButton);
+    
     const pauseButton = document.getElementById('pauseButton');
+    console.log('Pause button found:', pauseButton);
 
     // Check if elements exist
     if (!canvas) {
@@ -19,6 +25,9 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Pause button not found!');
         return;
     }
+
+    const ctx = canvas.getContext('2d');
+    console.log('Canvas context created:', ctx);
 
     // Game state
     let gameRunning = false;
@@ -57,17 +66,39 @@ document.addEventListener('DOMContentLoaded', function() {
     // Input handling
     const keys = {};
 
-    document.addEventListener('keydown', (e) => {
-        keys[e.code] = true;
-    });
+    // Add event listeners with error checking
+    try {
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+        });
+        console.log('Keydown listener added');
+    } catch (error) {
+        console.error('Error adding keydown listener:', error);
+    }
 
-    document.addEventListener('keyup', (e) => {
-        keys[e.code] = false;
-    });
+    try {
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+        console.log('Keyup listener added');
+    } catch (error) {
+        console.error('Error adding keyup listener:', error);
+    }
 
-    // Button event listeners
-    startButton.addEventListener('click', startGame);
-    pauseButton.addEventListener('click', togglePause);
+    // Button event listeners with error checking
+    try {
+        startButton.addEventListener('click', startGame);
+        console.log('Start button listener added');
+    } catch (error) {
+        console.error('Error adding start button listener:', error);
+    }
+
+    try {
+        pauseButton.addEventListener('click', togglePause);
+        console.log('Pause button listener added');
+    } catch (error) {
+        console.error('Error adding pause button listener:', error);
+    }
 
     // Game functions
     function startGame() {
