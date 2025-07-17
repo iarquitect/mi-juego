@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let barrelTimer = 0;
     let barrelInterval = 120; // Frames between barrels (2 seconds at 60fps)
 
-    // Player properties - SLOWER MOVEMENT
+    // Player properties - MUCH SLOWER MOVEMENT
     const player = {
         x: 50,
         y: 500,
@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function() {
         frameCount: 0,
         direction: 1, // 1 = right, -1 = left
         jumping: false,
-        moveSpeed: 3 // Reduced from 5 to 3 for slower movement
+        moveSpeed: 1.5 // MUCH slower: 1.5 pixels per frame (90 pixels per second)
     };
 
     // Game objects - STAIR-LIKE PLATFORMS
@@ -164,14 +164,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (barrelTimer >= barrelInterval) {
             barrelTimer = 0;
             
-            // Create barrel from right side, moving left
+            // Create barrel from right side with BOUNCING PHYSICS
             barrels.push({
                 x: canvas.width + 30, // Start off-screen to the right
                 y: 0,
                 width: 30,
                 height: 30,
-                speedY: 1.5, // Slower fall speed
-                speedX: -2 // Move left towards player
+                speedY: 0, // Start with no vertical speed
+                speedX: -1.3, // Slower horizontal movement: 1.3 pixels per frame
+                gravity: 0.3, // Gravity for bouncing
+                bounceCount: 0, // Track number of bounces
+                maxBounces: 4, // Maximum number of bounces
+                bounceFactor: 0.7 // Energy loss on bounce (70% retained)
             });
         }
     }
@@ -179,11 +183,50 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateBarrels() {
         for (let i = barrels.length - 1; i >= 0; i--) {
             const barrel = barrels[i];
-            barrel.y += barrel.speedY;
-            barrel.x += barrel.speedX; // Add horizontal movement
             
-            // Remove barrels that fall off screen or go off left side
-            if (barrel.y > canvas.height || barrel.x < -30) {
+            // Apply gravity for bouncing physics
+            barrel.speedY += barrel.gravity;
+            
+            // Update position
+            barrel.y += barrel.speedY;
+            barrel.x += barrel.speedX;
+            
+            // Check for bounce on ground
+            if (barrel.y + barrel.height >= canvas.height - 50) { // Ground level
+                barrel.y = canvas.height - 50 - barrel.height;
+                barrel.speedY = -barrel.speedY * barrel.bounceFactor; // Bounce with energy loss
+                barrel.bounceCount++;
+                
+                // Stop bouncing after max bounces or if speed is too low
+                if (barrel.bounceCount >= barrel.maxBounces || Math.abs(barrel.speedY) < 0.5) {
+                    barrel.speedY = 0;
+                    barrel.y = canvas.height - 50 - barrel.height; // Rest on ground
+                }
+            }
+            
+            // Check for bounce on platforms
+            for (const platform of platforms) {
+                if (barrel.x < platform.x + platform.width &&
+                    barrel.x + barrel.width > platform.x &&
+                    barrel.y + barrel.height > platform.y &&
+                    barrel.y + barrel.height < platform.y + platform.height + 10 &&
+                    barrel.speedY > 0) {
+                    
+                    barrel.y = platform.y - barrel.height;
+                    barrel.speedY = -barrel.speedY * barrel.bounceFactor; // Bounce with energy loss
+                    barrel.bounceCount++;
+                    
+                    // Stop bouncing after max bounces or if speed is too low
+                    if (barrel.bounceCount >= barrel.maxBounces || Math.abs(barrel.speedY) < 0.5) {
+                        barrel.speedY = 0;
+                        barrel.y = platform.y - barrel.height; // Rest on platform
+                    }
+                    break;
+                }
+            }
+            
+            // Remove barrels that go off left side or fall off bottom
+            if (barrel.x < -30 || barrel.y > canvas.height + 30) {
                 barrels.splice(i, 1);
                 if (barrel.y > canvas.height) {
                     score += 10; // Only score if barrel fell off bottom
@@ -209,12 +252,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updatePlayer() {
-        // Handle input - SLOWER MOVEMENT
+        // Handle input - MUCH SLOWER MOVEMENT
         if (keys['ArrowLeft']) {
-            player.speedX = -player.moveSpeed; // Use slower speed
+            player.speedX = -player.moveSpeed; // 1.5 pixels per frame
             player.direction = -1;
         } else if (keys['ArrowRight']) {
-            player.speedX = player.moveSpeed; // Use slower speed
+            player.speedX = player.moveSpeed; // 1.5 pixels per frame
             player.direction = 1;
         } else {
             player.speedX = 0;
