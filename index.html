@@ -3,29 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pompidou Leap</title>
+    <title>Pompidou Adventure</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div id="gameContainer">
-        <canvas id="gameCanvas"></canvas>
-        
-        <div id="score" class="ui-element">SCORE: 000000</div>
-        <div id="hiScore" class="ui-element">HI-SCORE: 015200</div>
-        <div id="lives" class="ui-element">LIVES: x3</div>
-        <div id="insertCoin" class="ui-element">PRESIONA ESPACIO PARA SALTAR</div>
-        <div id="instructions" class="ui-element">
-            Usa las FLECHAS para moverte ← →<br>
-            ESPACIO para saltar
+    <div class="game-container">
+        <div class="game-header">
+            <div class="score">Puntos: <span id="score">0</span></div>
+            <div class="lives">Vidas: <span id="lives">3</span></div>
+            <div class="level">Nivel: <span id="level">1</span></div>
         </div>
         
-        <div id="gameOver">
-            <h2 style="color: #ff4444; margin-bottom: 20px;">GAME OVER</h2>
-            <p style="color: #fff; margin-bottom: 20px;">Tu puntuación: <span id="finalScore">0</span></p>
-            <button onclick="game.restart()" style="background: #ff4444; color: #fff; border: none; padding: 10px 20px; font-family: 'Orbitron'; cursor: pointer; border-radius: 5px;">REINTENTAR</button>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div class="game-controls">
+            <div class="instructions">
+                <p>Usa las flechas para moverte y ESPACIO para saltar</p>
+                <p>¡Evita los barriles y llega al tubo superior!</p>
+            </div>
+            <button id="startButton">Iniciar Juego</button>
+            <button id="pauseButton">Pausar</button>
         </div>
     </div>
-
+    
     <script src="script.js"></script>
 </body>
 </html> 
