@@ -43,8 +43,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let score = 0;
     let lives = 3;
     let level = 1;
+    let barrelTimer = 0;
+    let barrelInterval = 120; // Frames between barrels (2 seconds at 60fps)
 
-    // Player properties
+    // Player properties - SLOWER MOVEMENT
     const player = {
         x: 50,
         y: 500,
@@ -56,16 +58,21 @@ document.addEventListener('DOMContentLoaded', function() {
         frame: 0,
         frameCount: 0,
         direction: 1, // 1 = right, -1 = left
-        jumping: false
+        jumping: false,
+        moveSpeed: 3 // Reduced from 5 to 3 for slower movement
     };
 
-    // Game objects
+    // Game objects - STAIR-LIKE PLATFORMS
     const platforms = [
         { x: 0, y: 550, width: 800, height: 50 }, // Ground
-        { x: 100, y: 450, width: 200, height: 20 }, // Platform 1
-        { x: 400, y: 350, width: 200, height: 20 }, // Platform 2
-        { x: 200, y: 250, width: 200, height: 20 }, // Platform 3
-        { x: 500, y: 150, width: 200, height: 20 }, // Platform 4
+        { x: 100, y: 450, width: 150, height: 20 }, // Platform 1 (left)
+        { x: 350, y: 400, width: 150, height: 20 }, // Platform 2 (right, higher)
+        { x: 200, y: 350, width: 150, height: 20 }, // Platform 3 (left, higher)
+        { x: 450, y: 300, width: 150, height: 20 }, // Platform 4 (right, higher)
+        { x: 300, y: 250, width: 150, height: 20 }, // Platform 5 (left, higher)
+        { x: 550, y: 200, width: 150, height: 20 }, // Platform 6 (right, higher)
+        { x: 400, y: 150, width: 150, height: 20 }, // Platform 7 (left, higher)
+        { x: 650, y: 100, width: 150, height: 20 }, // Platform 8 (right, higher)
     ];
 
     const barrels = [];
@@ -126,6 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
         level = 1;
         barrels.length = 0;
         enemies.length = 0;
+        barrelTimer = 0;
         player.x = 50;
         player.y = 500;
         updateUI();
@@ -150,13 +158,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function createBarrel() {
-        if (Math.random() < 0.02) { // 2% chance per frame
+        // SLOWER, PREDICTABLE BARREL DROPPING
+        barrelTimer++;
+        
+        if (barrelTimer >= barrelInterval) {
+            barrelTimer = 0;
+            
+            // Create barrel from right side, moving left
             barrels.push({
-                x: Math.random() * (canvas.width - 30),
+                x: canvas.width + 30, // Start off-screen to the right
                 y: 0,
                 width: 30,
                 height: 30,
-                speedY: 2 + Math.random() * 2
+                speedY: 1.5, // Slower fall speed
+                speedX: -2 // Move left towards player
             });
         }
     }
@@ -165,11 +180,14 @@ document.addEventListener('DOMContentLoaded', function() {
         for (let i = barrels.length - 1; i >= 0; i--) {
             const barrel = barrels[i];
             barrel.y += barrel.speedY;
+            barrel.x += barrel.speedX; // Add horizontal movement
             
-            // Remove barrels that fall off screen
-            if (barrel.y > canvas.height) {
+            // Remove barrels that fall off screen or go off left side
+            if (barrel.y > canvas.height || barrel.x < -30) {
                 barrels.splice(i, 1);
-                score += 10;
+                if (barrel.y > canvas.height) {
+                    score += 10; // Only score if barrel fell off bottom
+                }
             }
             
             // Check collision with player
@@ -191,12 +209,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updatePlayer() {
-        // Handle input
+        // Handle input - SLOWER MOVEMENT
         if (keys['ArrowLeft']) {
-            player.speedX = -5;
+            player.speedX = -player.moveSpeed; // Use slower speed
             player.direction = -1;
         } else if (keys['ArrowRight']) {
-            player.speedX = 5;
+            player.speedX = player.moveSpeed; // Use slower speed
             player.direction = 1;
         } else {
             player.speedX = 0;
@@ -249,6 +267,8 @@ document.addEventListener('DOMContentLoaded', function() {
             score += 100;
             player.x = 50;
             player.y = 500;
+            // Make game slightly harder each level
+            barrelInterval = Math.max(60, barrelInterval - 10); // Faster barrels
             updateUI();
         }
     }
