@@ -1,405 +1,341 @@
-// --- VARIABLES GLOBALES DEL JUEGO ---
-// Canvas y contexto
-let canvas, ctx;
-
-// Elementos del DOM
-let startButton, pauseButton;
-
-// Estado del juego
-let gameRunning = false;
-let gamePaused = false;
-let score = 0;
-let lives = 3;
-let level = 1;
-let barrilTimer = 0;
-let barrelInterval = 180;
-let frameCount = 0;
-
-// Constantes de física súper lenta
-const PLAYER_GRAVITY = 0.12;
-const PLAYER_JUMP_SPEED = -3.2;
-const PLAYER_MOVE_SPEED = 1.2;
-const BARRIL_GRAVITY = 0.09;
-const BARRIL_INIT_VY = 2.2;
-const BARRIL_INIT_VX = -3.5;
-const BARRIL_LAUNCH_INTERVAL = 180;
-const BARRIL_REBOTES_MAX = 6;
-
-// Constantes de dibujo
-const PLAYER_DRAW_W = 48;
-const PLAYER_DRAW_H = 96;
-const ENEMY_DRAW_W = 64;
-const ENEMY_DRAW_H = 64;
-const TUBE_DRAW_W = 48;
-const TUBE_DRAW_H = 96;
-const BARRIL_DRAW_W = 32;
-const BARRIL_DRAW_H = 32;
-const BARRIL_VISTA_W = 24;
-const BARRIL_VISTA_H = 48;
-
-// Posiciones de elementos
-const tubeInPos = { x: 100, y: 1040 - TUBE_DRAW_H, w: TUBE_DRAW_W, h: TUBE_DRAW_H };
-const tubeOutPos = { x: 1750, y: 200, w: TUBE_DRAW_W, h: TUBE_DRAW_H };
-const enemiesPos = { x: 1600, y: 200 };
-const barrilVistaPos = { x: 1700, y: 150 };
-
-// Suelo base
-const suelo = { x: 0, y: 1040, width: 1920, height: 40 };
-
-// Plataformas escalonadas
-const platforms = [
-    { x: 0, y: 1040, width: 1920, height: 40 }, // Suelo
-    { x: 300, y: 900, width: 350, height: 24 },
-    { x: 600, y: 760, width: 350, height: 24 },
-    { x: 900, y: 620, width: 350, height: 24 },
-    { x: 1200, y: 480, width: 350, height: 24 },
-    { x: 1500, y: 340, width: 350, height: 24 },
-    { x: 1700, y: 200, width: 180, height: 24 },
-];
-
-// Objetos del juego
-const player = {
-    x: tubeInPos.x + TUBE_DRAW_W + 20,
-    y: suelo.y - PLAYER_DRAW_H,
-    width: 32,
-    height: 32,
-    speedX: 0,
-    speedY: 0,
-    onGround: false,
-    frame: 0,
-    frameCount: 0,
-    direction: 1,
-    jumping: false,
-    moveSpeed: 1.5,
-    jumpSpeed: -8
-};
-
-const barrels = [];
-const enemies = [];
-const keys = {};
-
-// Estado de enemigos y barriles
-let enemigosEstado = 'esperando';
-let barrilEnCaida = null;
-
-// Sprites
-const spriteImgs = {
-    personaje_caminando: new Image(),
-    personaje_saltando: new Image(),
-    enemigos_esperando: new Image(),
-    enemigos_tirandobarril: new Image(),
-    enemigos_festejando: new Image(),
-    barril_vista: new Image(),
-    barril_caida: new Image(),
-    tubo_entrada: new Image(),
-    tubo_salida: new Image()
-};
-
-// Cargar sprites
-spriteImgs.personaje_caminando.src = 'images/personaje1_caminando.png';
-spriteImgs.personaje_saltando.src = 'images/personaje1_saltando.png';
-spriteImgs.enemigos_esperando.src = 'images/enemigos1_esperando.png';
-spriteImgs.enemigos_tirandobarril.src = 'images/enemigos1_tirandobarril.png';
-spriteImgs.enemigos_festejando.src = 'images/enemigos1_festejando.png';
-spriteImgs.barril_vista.src = 'images/barril_vista.png';
-spriteImgs.barril_caida.src = 'images/barril_caída.png';
-spriteImgs.tubo_entrada.src = 'images/tubo_entrada.png';
-spriteImgs.tubo_salida.src = 'images/tubo_salida.png';
-
-// Wait for DOM to be fully loaded
+// Esperar a que el DOM esté completamente cargado
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, initializing game...');
-    
-    // Debug: List all elements with IDs to see what's available
-    console.log('=== DEBUGGING DOM ELEMENTS ===');
-    const allElements = document.querySelectorAll('[id]');
-    console.log('All elements with IDs:', allElements);
-    allElements.forEach(el => {
-        console.log(`Element with ID "${el.id}":`, el);
-    });
-    
-    // Game variables - with detailed error checking
-    canvas = document.getElementById('gameCanvas');
-    console.log('Canvas found:', canvas);
-    
-    startButton = document.getElementById('startButton');
-    console.log('Start button found:', startButton);
-    
-    pauseButton = document.getElementById('pauseButton');
-    console.log('Pause button found:', pauseButton);
+    console.log('DOM cargado, inicializando juego...');
 
-    // Check if elements exist
-    if (!canvas) {
-        console.error('Canvas not found!');
-        return;
-    }
-    if (!startButton) {
-        console.error('Start button not found!');
-        return;
-    }
-    if (!pauseButton) {
-        console.error('Pause button not found!');
-        return;
-    }
-
-    ctx = canvas.getContext('2d');
-    console.log('Canvas context created:', ctx);
-
-    // Add event listeners with error checking
-    try {
-        document.addEventListener('keydown', (e) => {
-            keys[e.code] = true;
-        });
-        console.log('Keydown listener added');
-    } catch (error) {
-        console.error('Error adding keydown listener:', error);
-    }
-
-    try {
-        document.addEventListener('keyup', (e) => {
-            keys[e.code] = false;
-        });
-        console.log('Keyup listener added');
-    } catch (error) {
-        console.error('Error adding keyup listener:', error);
-    }
-
-    // Button event listeners with error checking
-    try {
-        if (startButton) {
-            startButton.addEventListener('click', startGame);
-            console.log('Start button listener added');
-        } else {
-            console.error('Start button is null, cannot add listener');
-        }
-    } catch (error) {
-        console.error('Error adding start button listener:', error);
-    }
-
-    try {
-        if (pauseButton) {
-            pauseButton.addEventListener('click', togglePause);
-            console.log('Pause button listener added');
-        } else {
-            console.error('Pause button is null, cannot add listener');
-        }
-    } catch (error) {
-        console.error('Error adding pause button listener:', error);
-    }
-
-    console.log('Game initialized successfully!');
-});
-
-// --- FUNCIONES DEL JUEGO ---
-function startGame() {
-    console.log('Game started!');
-    gameRunning = true;
-    gamePaused = false;
-    score = 0;
-    lives = 3;
-    level = 1;
-    barrels.length = 0;
-    enemies.length = 0;
-    barrilTimer = 0;
-    frameCount = 0;
-    player.x = tubeInPos.x + TUBE_DRAW_W + 20;
-    player.y = suelo.y - PLAYER_DRAW_H;
-    updateUI();
-    gameLoop();
-}
-
-function togglePause() {
-    if (gameRunning) {
-        gamePaused = !gamePaused;
-        pauseButton.textContent = gamePaused ? 'Reanudar' : 'Pausar';
-    }
-}
-
-function updateUI() {
+    // --- OBTENER ELEMENTOS DEL DOM ---
+    const canvas = document.getElementById('gameCanvas');
+    const startButton = document.getElementById('startButton');
+    const pauseButton = document.getElementById('pauseButton');
     const scoreElement = document.getElementById('score');
     const livesElement = document.getElementById('lives');
     const levelElement = document.getElementById('level');
-    
-    if (scoreElement) scoreElement.textContent = score;
-    if (livesElement) livesElement.textContent = lives;
-    if (levelElement) levelElement.textContent = level;
-}
 
-function updatePlayer() {
-    // Movimiento lateral
-    if (keys['ArrowLeft']) {
-        player.speedX = -PLAYER_MOVE_SPEED;
-        player.direction = -1;
-    } else if (keys['ArrowRight']) {
-        player.speedX = PLAYER_MOVE_SPEED;
-        player.direction = 1;
-    } else {
+    // Verificación robusta de elementos
+    if (!canvas || !startButton || !pauseButton || !scoreElement || !livesElement || !levelElement) {
+        console.error('Error: No se encontraron uno o más elementos esenciales del juego (canvas, botones, UI).');
+        return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    canvas.width = 1920;
+    canvas.height = 1080;
+
+    // --- CONFIGURACIÓN Y CONSTANTES DEL JUEGO ---
+
+    // FÍSICA DEL JUGADOR
+    const PLAYER_MOVE_SPEED = 2.5;  // Velocidad de movimiento lateral más fluida
+    const PLAYER_JUMP_SPEED = -10;  // Salto más suave
+    const PLAYER_GRAVITY = 0.25;    // Gravedad más realista y lenta
+
+    // FÍSICA DE LOS BARRILES
+    const BARREL_SPAWN_INTERVAL = 180; // Frames entre barriles (3 segundos a 60fps)
+    const BARREL_GRAVITY = 0.15;
+    const BARREL_HORIZONTAL_SPEED = -2.0;
+    const BARREL_BOUNCE_FACTOR = 0.7; // Energía que retiene al rebotar
+
+    // TAMAÑOS DE DIBUJO (SPRITES)
+    const PLAYER_DRAW_W = 64, PLAYER_DRAW_H = 128;
+    const ENEMY_DRAW_W = 128, ENEMY_DRAW_H = 128;
+    const BARREL_DRAW_W = 64, BARREL_DRAW_H = 64;
+
+    // --- ESTADO DEL JUEGO ---
+    let gameRunning = false;
+    let gamePaused = false;
+    let score = 0;
+    let lives = 3;
+    let level = 1;
+    let barrelTimer = 0;
+    const keys = {};
+
+    // --- OBJETOS DEL JUEGO ---
+    const player = {
+        x: 100,
+        y: canvas.height - 40 - PLAYER_DRAW_H, // Inicia sobre el suelo
+        width: PLAYER_DRAW_W,
+        height: PLAYER_DRAW_H,
+        speedX: 0,
+        speedY: 0,
+        onGround: false
+    };
+
+    const enemy = {
+        x: 1720,
+        y: 200 - ENEMY_DRAW_H,
+        width: ENEMY_DRAW_W,
+        height: ENEMY_DRAW_H
+    };
+
+    const platforms = [
+        { x: 0, y: 1040, width: 1920, height: 40 }, // Suelo
+        { x: 300, y: 900, width: 350, height: 24 },
+        { x: 600, y: 760, width: 350, height: 24 },
+        { x: 900, y: 620, width: 350, height: 24 },
+        { x: 1200, y: 480, width: 350, height: 24 },
+        { x: 1500, y: 340, width: 350, height: 24 },
+        { x: 1700, y: 200, width: 180, height: 24 } // Plataforma del enemigo
+    ];
+
+    const barrels = [];
+
+    // --- CARGA DE ASSETS (IMÁGENES) ---
+    const spriteSources = {
+        player_walk: 'images/personaje1_caminando.png',
+        player_jump: 'images/personaje1_saltando.png',
+        enemy_idle: 'images/enemigos1_esperando.png',
+        enemy_throw: 'images/enemigos1_tirandobarril.png',
+        enemy_celebrate: 'images/enemigos1_festejando.png',
+        barrel: 'images/barril_caída.png',
+        barrel_view: 'images/barril_vista.png',
+        tube_in: 'images/tubo_entrada.png',
+        tube_out: 'images/tubo_salida.png'
+    };
+
+    const spriteImgs = {};
+    let imagesLoaded = 0;
+    const numImages = Object.keys(spriteSources).length;
+
+    function preloadAssets(callback) {
+        console.log('Precargando assets...');
+        for (const key in spriteSources) {
+            spriteImgs[key] = new Image();
+            spriteImgs[key].src = spriteSources[key];
+            spriteImgs[key].onload = () => {
+                imagesLoaded++;
+                console.log(`Imagen cargada: ${spriteSources[key]}`);
+                if (imagesLoaded === numImages) {
+                    console.log('¡Todos los assets fueron cargados!');
+                    callback();
+                }
+            };
+            spriteImgs[key].onerror = () => {
+                console.error(`Error cargando la imagen: ${spriteSources[key]}`);
+            };
+        }
+    }
+
+    // --- MANEJO DE ENTRADAS (INPUT) ---
+    document.addEventListener('keydown', (e) => { keys[e.code] = true; });
+    document.addEventListener('keyup', (e) => { keys[e.code] = false; });
+    startButton.addEventListener('click', startGame);
+    pauseButton.addEventListener('click', togglePause);
+
+    // --- FUNCIONES PRINCIPALES DEL JUEGO ---
+
+    function startGame() {
+        if (gameRunning) return;
+        console.log('Iniciando juego...');
+        gameRunning = true;
+        gamePaused = false;
+        score = 0;
+        lives = 3;
+        level = 1;
+        barrels.length = 0;
+        barrelTimer = 0;
+        player.x = 100;
+        player.y = canvas.height - 40 - PLAYER_DRAW_H;
         player.speedX = 0;
+        player.speedY = 0;
+        updateUI();
+        gameLoop();
     }
-    // Salto
-    if (keys['Space'] && player.onGround) {
-        player.speedY = PLAYER_JUMP_SPEED;
-        player.onGround = false;
-        player.jumping = true;
-    }
-    // Gravedad lenta
-    if (!player.onGround) {
-        player.speedY += PLAYER_GRAVITY;
-    }
-    // Actualizar posición
-    player.x += player.speedX;
-    player.y += player.speedY;
-    // Limitar a los bordes
-    if (player.x < 0) player.x = 0;
-    if (player.x + PLAYER_DRAW_W > canvas.width) player.x = canvas.width - PLAYER_DRAW_W;
-    // Colisión con plataformas
-    player.onGround = false;
-    for (const platform of platforms) {
-        if (
-            player.x < platform.x + platform.width &&
-            player.x + PLAYER_DRAW_W > platform.x &&
-            player.y + PLAYER_DRAW_H > platform.y &&
-            player.y + PLAYER_DRAW_H - player.speedY <= platform.y
-        ) {
-            player.y = platform.y - PLAYER_DRAW_H;
-            player.speedY = 0;
-            player.onGround = true;
-            player.jumping = false;
-        }
-    }
-}
 
-function updateBarrelAndEnemies() {
-    if (!barrilEnCaida) {
-        barrilTimer++;
-        if (barrilTimer > BARRIL_LAUNCH_INTERVAL) {
-            enemigosEstado = 'tirando';
-            setTimeout(() => {
-                barrilEnCaida = {
-                    x: barrilVistaPos.x,
-                    y: barrilVistaPos.y,
-                    vy: BARRIL_INIT_VY,
-                    vx: BARRIL_INIT_VX,
-                    rebotes: 0,
-                    plataformaActual: platforms.length - 2
-                };
-                enemigosEstado = 'esperando';
-                barrilTimer = 0;
-            }, 500);
+    function togglePause() {
+        if (!gameRunning) return;
+        gamePaused = !gamePaused;
+        pauseButton.textContent = gamePaused ? 'Reanudar' : 'Pausar';
+        if (!gamePaused) {
+            gameLoop(); // Reanudar el loop si se despausa
         }
-    } else {
-        barrilEnCaida.x += barrilEnCaida.vx;
-        barrilEnCaida.y += barrilEnCaida.vy;
-        barrilEnCaida.vy += BARRIL_GRAVITY;
-        if (barrilEnCaida.plataformaActual >= 0) {
-            const plat = platforms[barrilEnCaida.plataformaActual];
-            if (
-                barrilEnCaida.y + BARRIL_DRAW_H > plat.y &&
-                barrilEnCaida.y + BARRIL_DRAW_H - barrilEnCaida.vy <= plat.y &&
-                barrilEnCaida.x + BARRIL_DRAW_W > plat.x &&
-                barrilEnCaida.x < plat.x + plat.width
+    }
+
+    function gameOver() {
+        gameRunning = false;
+        alert(`¡Game Over! Puntuación: ${score}`);
+        // Acá podrías dibujar una pantalla de "Game Over" en el canvas
+    }
+
+    // --- LÓGICA DE ACTUALIZACIÓN (UPDATE) ---
+
+    function update() {
+        if (!gameRunning || gamePaused) return;
+
+        updatePlayer();
+        createAndupdateBarrels();
+        checkCollisions();
+        updateUI();
+    }
+
+    function updatePlayer() {
+        // Movimiento lateral
+        if (keys['ArrowLeft']) {
+            player.speedX = -PLAYER_MOVE_SPEED;
+        } else if (keys['ArrowRight']) {
+            player.speedX = PLAYER_MOVE_SPEED;
+        } else {
+            player.speedX = 0;
+        }
+
+        // Salto
+        if (keys['Space'] && player.onGround) {
+            player.speedY = PLAYER_JUMP_SPEED;
+            player.onGround = false;
+        }
+
+        // Aplicar gravedad
+        if (!player.onGround) {
+            player.speedY += PLAYER_GRAVITY;
+        }
+
+        // Actualizar posición
+        player.x += player.speedX;
+        player.y += player.speedY;
+
+        // Colisión con bordes del canvas
+        if (player.x < 0) player.x = 0;
+        if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+
+        // Colisión con plataformas
+        player.onGround = false;
+        for (const platform of platforms) {
+            if (player.x < platform.x + platform.width &&
+                player.x + player.width > platform.x &&
+                player.y + player.height > platform.y &&
+                player.y + player.height - player.speedY <= platform.y + 1 // El +1 previene "temblores"
             ) {
-                barrilEnCaida.y = plat.y - BARRIL_DRAW_H;
-                barrilEnCaida.vy = -barrilEnCaida.vy * 0.7;
-                barrilEnCaida.vx *= 0.95;
-                barrilEnCaida.rebotes++;
-                barrilEnCaida.plataformaActual--;
+                player.y = platform.y - player.height;
+                player.speedY = 0;
+                player.onGround = true;
+                break; // Solo puede estar en una plataforma a la vez
             }
         }
-        if (barrilEnCaida.rebotes >= BARRIL_REBOTES_MAX || barrilEnCaida.y > 1080) {
-            barrilEnCaida = null;
+    }
+
+    function createAndupdateBarrels() {
+        // Crear nuevos barriles
+        barrelTimer++;
+        if (barrelTimer >= BARREL_SPAWN_INTERVAL) {
+            barrelTimer = 0;
+            barrels.push({
+                x: enemy.x, // Sale desde la posición del enemigo
+                y: enemy.y + enemy.height,
+                width: BARREL_DRAW_W,
+                height: BARREL_DRAW_H,
+                speedY: 2,
+                speedX: BARREL_HORIZONTAL_SPEED,
+            });
+        }
+
+        // Actualizar barriles existentes
+        for (let i = barrels.length - 1; i >= 0; i--) {
+            const barrel = barrels[i];
+
+            barrel.speedY += BARREL_GRAVITY;
+            barrel.y += barrel.speedY;
+            barrel.x += barrel.speedX;
+
+            // Colisión con plataformas (rebote)
+            for (const platform of platforms) {
+                 if (barrel.x < platform.x + platform.width &&
+                    barrel.x + barrel.width > platform.x &&
+                    barrel.y + barrel.height > platform.y &&
+                    barrel.y + barrel.height - barrel.speedY <= platform.y + 1
+                 ) {
+                    barrel.y = platform.y - barrel.height;
+                    barrel.speedY *= -BARREL_BOUNCE_FACTOR; // Rebota perdiendo energía
+                    if (Math.abs(barrel.speedY) < 1) { // Si el rebote es muy débil, rueda
+                        barrel.speedY = 0;
+                    }
+                 }
+            }
+            
+            // Eliminar barriles que salen de la pantalla
+            if (barrel.x + barrel.width < 0 || barrel.y > canvas.height) {
+                barrels.splice(i, 1);
+                score += 10; // Dar puntos por esquivar
+            }
         }
     }
-}
 
-function drawPlatforms() {
-    ctx.fillStyle = '#5ca3d6';
-    // Dibujar suelo base
-    ctx.fillRect(suelo.x, suelo.y, suelo.width, suelo.height);
-    // Dibujar plataformas escalonadas
-    for (let i = 1; i < platforms.length; i++) {
-        const platform = platforms[i];
-        ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+    function checkCollisions() {
+        // Colisión entre jugador y barriles
+        for (let i = barrels.length - 1; i >= 0; i--) {
+            const barrel = barrels[i];
+            if (player.x < barrel.x + barrel.width &&
+                player.x + player.width > barrel.x &&
+                player.y < barrel.y + barrel.height &&
+                player.y + player.height > barrel.y)
+            {
+                barrels.splice(i, 1); // El barril desaparece
+                lives--;
+                if (lives <= 0) {
+                    gameOver();
+                }
+                break;
+            }
+        }
     }
-}
 
-function drawEnemies() {
-    let img;
-    if (enemigosEstado === 'esperando') img = spriteImgs.enemigos_esperando;
-    else if (enemigosEstado === 'tirando') img = spriteImgs.enemigos_tirandobarril;
-    else img = spriteImgs.enemigos_festejando;
-    ctx.drawImage(img, enemiesPos.x, enemiesPos.y, ENEMY_DRAW_W, ENEMY_DRAW_H);
-    if (enemigosEstado === 'esperando' && !barrilEnCaida) {
-        ctx.drawImage(spriteImgs.barril_vista, barrilVistaPos.x, barrilVistaPos.y, BARRIL_VISTA_W, BARRIL_VISTA_H);
+    // --- LÓGICA DE DIBUJADO (DRAW) ---
+
+    function draw() {
+        // Fondo
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, '#87CEEB'); // Cielo celeste
+        gradient.addColorStop(1, '#4682B4'); // Acero azulado
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Plataformas
+        ctx.fillStyle = '#d2691e'; // Color chocolate para las vigas
+        for (const platform of platforms) {
+            ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+        }
+
+        // Tubos
+        ctx.drawImage(spriteImgs.tube_in, 50, canvas.height - 40 - 96, 48, 96);
+        ctx.drawImage(spriteImgs.tube_out, 1750, 200, 48, 96);
+
+        // Enemigo
+        ctx.drawImage(spriteImgs.enemy_idle, enemy.x, enemy.y, enemy.width, enemy.height);
+
+        // Barril de vista (al lado del enemigo)
+        if (barrelTimer < BARREL_SPAWN_INTERVAL - 30) {
+            ctx.drawImage(spriteImgs.barrel_view, enemy.x + enemy.width + 10, enemy.y + 20, 24, 48);
+        }
+
+        // Barriles
+        for (const barrel of barrels) {
+            ctx.drawImage(spriteImgs.barrel, barrel.x, barrel.y, barrel.width, barrel.height);
+        }
+
+        // Jugador
+        const playerSprite = player.onGround ? spriteImgs.player_walk : spriteImgs.player_jump;
+        ctx.drawImage(playerSprite, player.x, player.y, player.width, player.height);
     }
-}
-
-function drawTubes() {
-    ctx.drawImage(spriteImgs.tubo_entrada, tubeInPos.x, tubeInPos.y, tubeInPos.w, tubeInPos.h);
-    ctx.drawImage(spriteImgs.tubo_salida, tubeOutPos.x, tubeOutPos.y, tubeOutPos.w, tubeOutPos.h);
-}
-
-function drawBackground() {
-    // Simple gradient background for now
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, '#87CEEB');
-    gradient.addColorStop(1, '#4682B4');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-}
-
-function drawPlayer() {
-    const img = player.jumping ? spriteImgs.personaje_saltando : spriteImgs.personaje_caminando;
-    ctx.drawImage(img, player.x, player.y, PLAYER_DRAW_W, PLAYER_DRAW_H);
-}
-
-function drawBarrels() {
-    if (barrilEnCaida) {
-        ctx.drawImage(spriteImgs.barril_caida, barrilEnCaida.x, barrilEnCaida.y, BARRIL_DRAW_W, BARRIL_DRAW_H);
-    }
-}
-
-function drawEnemiesAndTopRight() {
-    // Enemigos esperando
-    drawEnemies();
-    // Tubo de salida
-    ctx.drawImage(spriteImgs.tubo_salida, tubeOutPos.x, tubeOutPos.y, tubeOutPos.w, tubeOutPos.h);
-}
-
-function draw() {
-    drawBackground();
-    drawTubes();
-    drawPlatforms();
-    drawEnemies();
-    drawBarrels();
-    drawPlayer();
-}
-
-function update() {
-    if (!gameRunning || gamePaused) return;
     
-    updatePlayer();
-    updateBarrelAndEnemies();
-    updateUI();
-}
+    function updateUI() {
+        scoreElement.textContent = score;
+        livesElement.textContent = lives;
+        levelElement.textContent = level;
+    }
 
-function gameLoop() {
-    if (gameRunning && !gamePaused) {
+    // --- BUCLE PRINCIPAL DEL JUEGO ---
+
+    function gameLoop() {
         update();
         draw();
-        requestAnimationFrame(gameLoop);
+        
+        if (gameRunning && !gamePaused) {
+            requestAnimationFrame(gameLoop);
+        }
     }
-}
 
-function gameOver() {
-    gameRunning = false;
-    enemigosEstado = 'festejando';
-    alert(`¡Game Over! Puntuación: ${score}`);
-}
-
-function checkCollision(rect1, rect2) {
-    return rect1.x < rect2.x + rect2.width &&
-           rect1.x + rect1.width > rect2.x &&
-           rect1.y < rect2.y + rect2.height &&
-           rect1.y + rect1.height > rect2.y;
-} 
+    // --- INICIO ---
+    // El juego no se inicia automáticamente, espera al precargador
+    preloadAssets(() => {
+        console.log('Listo para jugar. Presioná "Start".');
+        // Dibuja el estado inicial para que no se vea una pantalla en blanco
+        updateUI();
+        draw();
+    });
+}); 
