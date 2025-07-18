@@ -262,69 +262,145 @@ document.addEventListener('DOMContentLoaded', function() {
                rect1.y + rect1.height > rect2.y;
     }
 
+    // --- AJUSTES DE FÍSICA SÚPER LENTA ---
+    const PLAYER_GRAVITY = 0.12; // Muy lento
+    const PLAYER_JUMP_SPEED = -3.2; // Salto lento y suave
+    const PLAYER_MOVE_SPEED = 1.2; // Movimiento lateral lento
+    const BARRIL_GRAVITY = 0.09; // Caída lenta
+    const BARRIL_INIT_VY = 2.2; // Velocidad inicial de caída lenta
+    const BARRIL_INIT_VX = -3.5; // Velocidad horizontal lenta
+
+    // --- AJUSTAR POSICIÓN DEL SUELO Y PERSONAJE ---
+    // Suelo
+    const suelo = { x: 0, y: 1040, width: 1920, height: 40 };
+    // Personaje justo sobre el suelo
+    player.x = tubeInPos.x + TUBE_DRAW_W + 20;
+    player.y = suelo.y - PLAYER_DRAW_H;
+
+    // --- AJUSTAR FÍSICA DEL PERSONAJE ---
     function updatePlayer() {
-        // Handle input - SLOW MOTION - INDEPENDENT OF BARRELS
+        // Movimiento lateral
         if (keys['ArrowLeft']) {
-            player.speedX = -player.moveSpeed; // 1.5 pixels per frame
+            player.speedX = -PLAYER_MOVE_SPEED;
             player.direction = -1;
         } else if (keys['ArrowRight']) {
-            player.speedX = player.moveSpeed; // 1.5 pixels per frame
+            player.speedX = PLAYER_MOVE_SPEED;
             player.direction = 1;
         } else {
             player.speedX = 0;
         }
-        
+        // Salto
         if (keys['Space'] && player.onGround) {
-            player.speedY = player.jumpSpeed; // MUCH slower jump (-8 instead of -15)
+            player.speedY = PLAYER_JUMP_SPEED;
             player.onGround = false;
             player.jumping = true;
         }
-        
-        // Apply gravity (SLOWER) - INDEPENDENT OF BARRELS
+        // Gravedad lenta
         if (!player.onGround) {
-            player.speedY += 0.4; // Reduced from 0.8 for slower fall
+            player.speedY += PLAYER_GRAVITY;
         }
-        
-        // Update position
+        // Actualizar posición
         player.x += player.speedX;
         player.y += player.speedY;
-        
-        // Keep player in bounds
+        // Limitar a los bordes
         if (player.x < 0) player.x = 0;
-        if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
-        
-        // Platform collision
+        if (player.x + PLAYER_DRAW_W > canvas.width) player.x = canvas.width - PLAYER_DRAW_W;
+        // Colisión con plataformas
         player.onGround = false;
         for (const platform of platforms) {
-            if (checkCollision(player, platform)) {
-                if (player.speedY > 0 && player.y < platform.y) {
-                    player.y = platform.y - player.height;
-                    player.speedY = 0;
-                    player.onGround = true;
-                    player.jumping = false;
+            if (
+                player.x < platform.x + platform.width &&
+                player.x + PLAYER_DRAW_W > platform.x &&
+                player.y + PLAYER_DRAW_H > platform.y &&
+                player.y + PLAYER_DRAW_H - player.speedY <= platform.y
+            ) {
+                player.y = platform.y - PLAYER_DRAW_H;
+                player.speedY = 0;
+                player.onGround = true;
+                player.jumping = false;
+            }
+        }
+    }
+
+    // --- AJUSTAR FÍSICA DEL BARRIL ---
+    function updateBarrelAndEnemies() {
+        if (!barrilEnCaida) {
+            barrilTimer++;
+            if (barrilTimer > BARRIL_LAUNCH_INTERVAL) {
+                enemigosEstado = 'tirando';
+                setTimeout(() => {
+                    barrilEnCaida = {
+                        x: barrilVistaPos.x,
+                        y: barrilVistaPos.y,
+                        vy: BARRIL_INIT_VY,
+                        vx: BARRIL_INIT_VX,
+                        rebotes: 0,
+                        plataformaActual: platforms.length - 2
+                    };
+                    enemigosEstado = 'esperando';
+                    barrilTimer = 0;
+                }, 500);
+            }
+        } else {
+            barrilEnCaida.x += barrilEnCaida.vx;
+            barrilEnCaida.y += barrilEnCaida.vy;
+            barrilEnCaida.vy += BARRIL_GRAVITY;
+            if (barrilEnCaida.plataformaActual >= 0) {
+                const plat = platforms[barrilEnCaida.plataformaActual];
+                if (
+                    barrilEnCaida.y + BARRIL_DRAW_H > plat.y &&
+                    barrilEnCaida.y + BARRIL_DRAW_H - barrilEnCaida.vy <= plat.y &&
+                    barrilEnCaida.x + BARRIL_DRAW_W > plat.x &&
+                    barrilEnCaida.x < plat.x + plat.width
+                ) {
+                    barrilEnCaida.y = plat.y - BARRIL_DRAW_H;
+                    barrilEnCaida.vy = -barrilEnCaida.vy * 0.7;
+                    barrilEnCaida.vx *= 0.95;
+                    barrilEnCaida.rebotes++;
+                    barrilEnCaida.plataformaActual--;
                 }
             }
-        }
-        
-        // Animation
-        if (player.speedX !== 0 && player.onGround) {
-            player.frameCount++;
-            if (player.frameCount > 5) {
-                player.frame = (player.frame + 1) % 4;
-                player.frameCount = 0;
+            if (barrilEnCaida.rebotes >= BARRIL_REBOTES_MAX || barrilEnCaida.y > 1080) {
+                barrilEnCaida = null;
             }
         }
-        
-        // Check if player reached the top
-        if (player.y < 100) {
-            level++;
-            score += 100;
-            player.x = 50;
-            player.y = 500;
-            // Make game slightly harder each level
-            barrelInterval = Math.max(120, barrelInterval - 15); // Slightly faster barrels
-            updateUI();
+    }
+
+    // --- AJUSTAR DIBUJO DEL SUELO ---
+    function drawPlatforms() {
+        ctx.fillStyle = '#5ca3d6';
+        // Dibujar suelo base
+        ctx.fillRect(suelo.x, suelo.y, suelo.width, suelo.height);
+        // Dibujar plataformas escalonadas
+        for (let i = 1; i < platforms.length; i++) {
+            const platform = platforms[i];
+            ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
         }
+    }
+
+    function drawEnemies() {
+        let img;
+        if (enemigosEstado === 'esperando') img = spriteImgs.enemigos_esperando;
+        else if (enemigosEstado === 'tirando') img = spriteImgs.enemigos_tirandobarril;
+        else img = spriteImgs.enemigos_festejando;
+        ctx.drawImage(img, enemiesPos.x, enemiesPos.y, ENEMY_DRAW_W, ENEMY_DRAW_H);
+        if (enemigosEstado === 'esperando' && !barrilEnCaida) {
+            ctx.drawImage(spriteImgs.barril_vista, barrilVistaPos.x, barrilVistaPos.y, BARRIL_VISTA_W, BARRIL_VISTA_H);
+        }
+    }
+
+    function drawTubes() {
+        ctx.drawImage(spriteImgs.tubo_entrada, tubeInPos.x, tubeInPos.y, tubeInPos.w, tubeInPos.h);
+        ctx.drawImage(spriteImgs.tubo_salida, tubeOutPos.x, tubeOutPos.y, tubeOutPos.w, tubeOutPos.h);
+    }
+
+    function drawBackground() {
+        // Simple gradient background for now
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, '#87CEEB');
+        gradient.addColorStop(1, '#4682B4');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
     function gameOver() {
@@ -370,8 +446,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // const tubeOutPos = { x: 1920 - TUBE_DRAW_W - 40, y: 120, w: TUBE_DRAW_W, h: TUBE_DRAW_H }; // This line is now redundant
 
     // --- POSICIÓN DEL PERSONAJE PRINCIPAL (inicio) ---
-    player.x = tubeInPos.x + TUBE_DRAW_W + 20;
-    player.y = tubeInPos.y + TUBE_DRAW_H - PLAYER_DRAW_H;
+    // player.x = tubeInPos.x + TUBE_DRAW_W + 20;
+    // player.y = tubeInPos.y + TUBE_DRAW_H - PLAYER_DRAW_H;
 
     // --- PLATAFORMAS ESCALONADAS (según referencia) ---
     // const platforms = [
@@ -427,85 +503,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function drawPlatforms() {
-        ctx.fillStyle = '#5ca3d6';
-        for (const platform of platforms) {
-            ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
-        }
-    }
-
-    function drawEnemies() {
-        let img;
-        if (enemigosEstado === 'esperando') img = spriteImgs.enemigos_esperando;
-        else if (enemigosEstado === 'tirando') img = spriteImgs.enemigos_tirandobarril;
-        else img = spriteImgs.enemigos_festejando;
-        ctx.drawImage(img, enemiesPos.x, enemiesPos.y, ENEMY_DRAW_W, ENEMY_DRAW_H);
-        if (enemigosEstado === 'esperando' && !barrilEnCaida) {
-            ctx.drawImage(spriteImgs.barril_vista, barrilVistaPos.x, barrilVistaPos.y, BARRIL_VISTA_W, BARRIL_VISTA_H);
-        }
-    }
-
-    function drawTubes() {
-        ctx.drawImage(spriteImgs.tubo_entrada, tubeInPos.x, tubeInPos.y, tubeInPos.w, tubeInPos.h);
-        ctx.drawImage(spriteImgs.tubo_salida, tubeOutPos.x, tubeOutPos.y, tubeOutPos.w, tubeOutPos.h);
-    }
-
-    function drawBackground() {
-        // Simple gradient background for now
-        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        gradient.addColorStop(0, '#87CEEB');
-        gradient.addColorStop(1, '#4682B4');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    function updateBarrelAndEnemies() {
-        if (!barrilEnCaida) {
-            barrilTimer++;
-            if (barrilTimer > BARRIL_LAUNCH_INTERVAL) {
-                enemigosEstado = 'tirando';
-                setTimeout(() => {
-                    barrilEnCaida = {
-                        x: barrilVistaPos.x,
-                        y: barrilVistaPos.y,
-                        vy: 6,
-                        vx: -8,
-                        rebotes: 0,
-                        plataformaActual: platforms.length - 2 // Empieza en la última plataforma
-                    };
-                    enemigosEstado = 'esperando';
-                    barrilTimer = 0;
-                }, 500);
-            }
-        } else {
-            // Movimiento diagonal y rebote en plataformas
-            barrilEnCaida.x += barrilEnCaida.vx;
-            barrilEnCaida.y += barrilEnCaida.vy;
-            barrilEnCaida.vy += 0.5;
-            // Rebote en plataformas
-            if (barrilEnCaida.plataformaActual >= 0) {
-                const plat = platforms[barrilEnCaida.plataformaActual];
-                if (
-                    barrilEnCaida.y + BARRIL_DRAW_H > plat.y &&
-                    barrilEnCaida.y + BARRIL_DRAW_H - barrilEnCaida.vy <= plat.y &&
-                    barrilEnCaida.x + BARRIL_DRAW_W > plat.x &&
-                    barrilEnCaida.x < plat.x + plat.width
-                ) {
-                    barrilEnCaida.y = plat.y - BARRIL_DRAW_H;
-                    barrilEnCaida.vy = -barrilEnCaida.vy * 0.7;
-                    barrilEnCaida.vx *= 0.95;
-                    barrilEnCaida.rebotes++;
-                    barrilEnCaida.plataformaActual--;
-                }
-            }
-            // Eliminar barril después de los rebotes
-            if (barrilEnCaida.rebotes >= BARRIL_REBOTES_MAX || barrilEnCaida.y > 1080) {
-                barrilEnCaida = null;
-            }
-        }
-    }
-
-    // --- DIBUJO DE ENEMIGOS, BARRIL Y TUBO DE SALIDA EN ORDEN CORRECTO ---
     function drawEnemiesAndTopRight() {
         // Enemigos esperando
         let img;
