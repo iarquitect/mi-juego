@@ -356,20 +356,24 @@ document.addEventListener('DOMContentLoaded', function() {
     // Tubo salida (abajo centro-izquierda, azul, 320x160)
     const tubeOutSprite = { x: 320, y: 640, w: 320, h: 160 };
 
-    // --- ESCALADO DE SPRITES EN EL CANVAS ---
-    const PLAYER_DRAW_W = 64, PLAYER_DRAW_H = 64;
-    const ENEMY_DRAW_W = 64, ENEMY_DRAW_H = 64;
-    const TUBE_DRAW_W = 96, TUBE_DRAW_H = 48;
+    // --- ESCALADO DE SPRITES EN EL CANVAS (ajustado) ---
+    const PLAYER_DRAW_W = 48, PLAYER_DRAW_H = 48;
+    const ENEMY_DRAW_W = 48, ENEMY_DRAW_H = 48;
+    const TUBE_DRAW_W = 64, TUBE_DRAW_H = 32;
 
-    // --- POSICIONES DE TUBOS EN EL JUEGO (ajustadas) ---
-    const tubeInPos = { x: 30, y: 536, w: TUBE_DRAW_W, h: TUBE_DRAW_H }; // Abajo izquierda
-    const tubeOutPos = { x: 670, y: 80, w: TUBE_DRAW_W, h: TUBE_DRAW_H }; // Arriba derecha
+    // --- POSICIONES DE TUBOS EN EL JUEGO (ajustadas y centradas) ---
+    const tubeInPos = { x: 30, y: 568, w: TUBE_DRAW_W, h: TUBE_DRAW_H }; // Abajo izquierda
+    const tubeOutPos = { x: 688, y: 80, w: TUBE_DRAW_W, h: TUBE_DRAW_H }; // Arriba derecha
 
     // --- ENEMIGOS EN LA PARTE SUPERIOR (ajustados) ---
     const enemiesPos = [
         { x: 600, y: 80 },
-        { x: 500, y: 80 }
+        { x: 540, y: 80 }
     ];
+
+    // --- CENTRAR PERSONAJE EN EL TUBO DE INICIO ---
+    player.x = tubeInPos.x + (TUBE_DRAW_W - PLAYER_DRAW_W) / 2;
+    player.y = tubeInPos.y + TUBE_DRAW_H - PLAYER_DRAW_H;
 
     // --- ANIMACIÓN DEL PERSONAJE PRINCIPAL ---
     let playerAnimFrame = 0;
