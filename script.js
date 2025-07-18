@@ -45,6 +45,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let lives = 3;
     let level = 1;
     let barrelTimer = 0;
+    let enemyState = 'idle'; // 'idle', 'throwing', 'celebrating'
+    let throwAnimationTimer = 0;
     const keys = {};
 
     // --- OBJETOS DEL JUEGO ---
@@ -55,7 +57,8 @@ document.addEventListener('DOMContentLoaded', function() {
         height: PLAYER_DRAW_H,
         speedX: 0,
         speedY: 0,
-        onGround: false
+        onGround: false,
+        jumping: false // Agregar estado de salto
     };
 
     const enemy = {
@@ -121,6 +124,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- FUNCIONES PRINCIPALES DEL JUEGO ---
 
+    function resetPlayer() {
+        player.x = 100;
+        player.y = canvas.height - 40 - PLAYER_DRAW_H;
+        player.speedX = 0;
+        player.speedY = 0;
+        player.onGround = false;
+        player.jumping = false;
+    }
+
     function startGame() {
         if (gameRunning) return;
         console.log('Iniciando juego...');
@@ -131,10 +143,9 @@ document.addEventListener('DOMContentLoaded', function() {
         level = 1;
         barrels.length = 0;
         barrelTimer = 0;
-        player.x = 100;
-        player.y = canvas.height - 40 - PLAYER_DRAW_H;
-        player.speedX = 0;
-        player.speedY = 0;
+        enemyState = 'idle';
+        throwAnimationTimer = 0;
+        resetPlayer();
         updateUI();
         gameLoop();
     }
@@ -150,6 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function gameOver() {
         gameRunning = false;
+        enemyState = 'celebrating';
         alert(`¡Game Over! Puntuación: ${score}`);
         // Acá podrías dibujar una pantalla de "Game Over" en el canvas
     }
@@ -161,6 +173,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         updatePlayer();
         createAndupdateBarrels();
+        updateEnemyAnimation();
         checkCollisions();
         updateUI();
     }
@@ -179,6 +192,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (keys['Space'] && player.onGround) {
             player.speedY = PLAYER_JUMP_SPEED;
             player.onGround = false;
+            player.jumping = true;
         }
 
         // Aplicar gravedad
@@ -205,7 +219,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 player.y = platform.y - player.height;
                 player.speedY = 0;
                 player.onGround = true;
+                player.jumping = false; // Resetear estado de salto cuando toca suelo
                 break; // Solo puede estar en una plataforma a la vez
+            }
+        }
+    }
+
+    function updateEnemyAnimation() {
+        if (enemyState === 'throwing') {
+            throwAnimationTimer++;
+            if (throwAnimationTimer > 30) { // 0.5 segundos a 60fps
+                enemyState = 'idle';
+                throwAnimationTimer = 0;
             }
         }
     }
@@ -215,9 +240,13 @@ document.addEventListener('DOMContentLoaded', function() {
         barrelTimer++;
         if (barrelTimer >= BARREL_SPAWN_INTERVAL) {
             barrelTimer = 0;
+            enemyState = 'throwing';
+            throwAnimationTimer = 0;
+            
+            // Crear barril desde la posición correcta del enemigo
             barrels.push({
-                x: enemy.x, // Sale desde la posición del enemigo
-                y: enemy.y + enemy.height,
+                x: enemy.x + enemy.width / 2 - BARREL_DRAW_W / 2, // Centrado en el enemigo
+                y: enemy.y + enemy.height / 2, // Desde la mitad del enemigo
                 width: BARREL_DRAW_W,
                 height: BARREL_DRAW_H,
                 speedY: 2,
@@ -269,6 +298,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 lives--;
                 if (lives <= 0) {
                     gameOver();
+                } else {
+                    // Reiniciar solo el jugador, no todo el juego
+                    resetPlayer();
                 }
                 break;
             }
@@ -295,11 +327,19 @@ document.addEventListener('DOMContentLoaded', function() {
         ctx.drawImage(spriteImgs.tube_in, 50, canvas.height - 40 - 96, 48, 96);
         ctx.drawImage(spriteImgs.tube_out, 1750, 200, 48, 96);
 
-        // Enemigo
-        ctx.drawImage(spriteImgs.enemy_idle, enemy.x, enemy.y, enemy.width, enemy.height);
+        // Enemigo con animación
+        let enemySprite;
+        if (enemyState === 'idle') {
+            enemySprite = spriteImgs.enemy_idle;
+        } else if (enemyState === 'throwing') {
+            enemySprite = spriteImgs.enemy_throw;
+        } else if (enemyState === 'celebrating') {
+            enemySprite = spriteImgs.enemy_celebrate;
+        }
+        ctx.drawImage(enemySprite, enemy.x, enemy.y, enemy.width, enemy.height);
 
-        // Barril de vista (al lado del enemigo)
-        if (barrelTimer < BARREL_SPAWN_INTERVAL - 30) {
+        // Barril de vista (al lado del enemigo) solo cuando está idle
+        if (enemyState === 'idle' && barrelTimer < BARREL_SPAWN_INTERVAL - 30) {
             ctx.drawImage(spriteImgs.barrel_view, enemy.x + enemy.width + 10, enemy.y + 20, 24, 48);
         }
 
@@ -308,8 +348,8 @@ document.addEventListener('DOMContentLoaded', function() {
             ctx.drawImage(spriteImgs.barrel, barrel.x, barrel.y, barrel.width, barrel.height);
         }
 
-        // Jugador
-        const playerSprite = player.onGround ? spriteImgs.player_walk : spriteImgs.player_jump;
+        // Jugador - SOLO UNA IMAGEN
+        const playerSprite = player.jumping ? spriteImgs.player_jump : spriteImgs.player_walk;
         ctx.drawImage(playerSprite, player.x, player.y, player.width, player.height);
     }
     
