@@ -367,7 +367,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- POSICIONES DE TUBOS EN EL JUEGO (según referencia) ---
     const tubeInPos = { x: 40, y: 1080 - TUBE_DRAW_H - 40, w: TUBE_DRAW_W, h: TUBE_DRAW_H };
-    const tubeOutPos = { x: 1920 - TUBE_DRAW_W - 40, y: 120, w: TUBE_DRAW_W, h: TUBE_DRAW_H };
+    // const tubeOutPos = { x: 1920 - TUBE_DRAW_W - 40, y: 120, w: TUBE_DRAW_W, h: TUBE_DRAW_H }; // This line is now redundant
 
     // --- POSICIÓN DEL PERSONAJE PRINCIPAL (inicio) ---
     player.x = tubeInPos.x + TUBE_DRAW_W + 20;
@@ -385,8 +385,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // ];
 
     // --- ENEMIGOS EN LA PARTE SUPERIOR DERECHA (según referencia) ---
-    const enemiesPos = { x: 1700 + 40, y: 200 - ENEMY_DRAW_H + 24 };
-    const barrilVistaPos = { x: enemiesPos.x + ENEMY_DRAW_W + 10, y: enemiesPos.y + ENEMY_DRAW_H - BARRIL_VISTA_H };
+    // const enemiesPos = { x: 1700 + 40, y: 200 - ENEMY_DRAW_H + 24 }; // This line is now redundant
+    // const barrilVistaPos = { x: enemiesPos.x + ENEMY_DRAW_W + 10, y: enemiesPos.y + ENEMY_DRAW_H - BARRIL_VISTA_H }; // This line is now redundant
 
     // --- TUBO DE SALIDA (arriba derecha) ---
     // tubeOutPos ya definido
