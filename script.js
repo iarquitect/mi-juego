@@ -459,6 +459,66 @@ document.addEventListener('DOMContentLoaded', function() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
+    function updateBarrelAndEnemies() {
+        if (!barrilEnCaida) {
+            barrilTimer++;
+            if (barrilTimer > BARRIL_LAUNCH_INTERVAL) {
+                enemigosEstado = 'tirando';
+                setTimeout(() => {
+                    barrilEnCaida = {
+                        x: barrilVistaPos.x,
+                        y: barrilVistaPos.y,
+                        vy: 6,
+                        vx: -8,
+                        rebotes: 0,
+                        plataformaActual: platforms.length - 2 // Empieza en la última plataforma
+                    };
+                    enemigosEstado = 'esperando';
+                    barrilTimer = 0;
+                }, 500);
+            }
+        } else {
+            // Movimiento diagonal y rebote en plataformas
+            barrilEnCaida.x += barrilEnCaida.vx;
+            barrilEnCaida.y += barrilEnCaida.vy;
+            barrilEnCaida.vy += 0.5;
+            // Rebote en plataformas
+            if (barrilEnCaida.plataformaActual >= 0) {
+                const plat = platforms[barrilEnCaida.plataformaActual];
+                if (
+                    barrilEnCaida.y + BARRIL_DRAW_H > plat.y &&
+                    barrilEnCaida.y + BARRIL_DRAW_H - barrilEnCaida.vy <= plat.y &&
+                    barrilEnCaida.x + BARRIL_DRAW_W > plat.x &&
+                    barrilEnCaida.x < plat.x + plat.width
+                ) {
+                    barrilEnCaida.y = plat.y - BARRIL_DRAW_H;
+                    barrilEnCaida.vy = -barrilEnCaida.vy * 0.7;
+                    barrilEnCaida.vx *= 0.95;
+                    barrilEnCaida.rebotes++;
+                    barrilEnCaida.plataformaActual--;
+                }
+            }
+            // Eliminar barril después de los rebotes
+            if (barrilEnCaida.rebotes >= BARRIL_REBOTES_MAX || barrilEnCaida.y > 1080) {
+                barrilEnCaida = null;
+            }
+        }
+    }
+
+    // --- DIBUJO DE ENEMIGOS, BARRIL Y TUBO DE SALIDA EN ORDEN CORRECTO ---
+    function drawEnemiesAndTopRight() {
+        // Enemigos esperando
+        let img;
+        if (enemigosEstado === 'esperando') img = spriteImgs.enemigos_esperando;
+        else if (enemigosEstado === 'tirando') img = spriteImgs.enemigos_tirandobarril;
+        else img = spriteImgs.enemigos_festejando;
+        ctx.drawImage(img, enemiesPos.x, enemiesPos.y, ENEMY_DRAW_W, ENEMY_DRAW_H);
+        // Barril al lado de los enemigos
+        ctx.drawImage(spriteImgs.barril_vista, barrilVistaPos.x, barrilVistaPos.y, BARRIL_VISTA_W, BARRIL_VISTA_H);
+        // Tubo de salida
+        ctx.drawImage(spriteImgs.tubo_salida, tubeOutPos.x, tubeOutPos.y, tubeOutPos.w, tubeOutPos.h);
+    }
+
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
@@ -466,11 +526,11 @@ document.addEventListener('DOMContentLoaded', function() {
         drawBackground();
         
         // Draw tubes
-        drawTubes();
+        ctx.drawImage(spriteImgs.tubo_entrada, tubeInPos.x, tubeInPos.y, tubeInPos.w, tubeInPos.h);
         // Draw platforms
         drawPlatforms();
         // Draw enemies
-        drawEnemies();
+        drawEnemiesAndTopRight();
         // Draw barrels
         drawBarrels();
         // Draw player
