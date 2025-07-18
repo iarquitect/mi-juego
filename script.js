@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let level = 1;
     let barrelTimer = 0;
     let barrelInterval = 180; // Frames between barrels (3 seconds at 60fps) - SLOWER
+    let frameCount = 0; // Global frame counter for consistent timing
 
     // Player properties - SLOW MOTION
     const player = {
@@ -135,6 +136,7 @@ document.addEventListener('DOMContentLoaded', function() {
         barrels.length = 0;
         enemies.length = 0;
         barrelTimer = 0;
+        frameCount = 0;
         player.x = 50;
         player.y = 500;
         updateUI();
@@ -159,7 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function createBarrel() {
-        // SLOW MOTION BARREL DROPPING
+        // SLOW MOTION BARREL DROPPING - INDEPENDENT OF PLAYER
         barrelTimer++;
         
         if (barrelTimer >= barrelInterval) {
@@ -172,12 +174,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 width: 30,
                 height: 30,
                 speedY: 0, // Start with no vertical speed
-                speedX: -0.8, // MUCH slower horizontal movement: 0.8 pixels per frame
-                gravity: 0.15, // MUCH slower gravity for slow motion
+                speedX: -0.8, // CONSTANT horizontal movement: 0.8 pixels per frame
+                gravity: 0.15, // CONSTANT gravity for slow motion
                 bounceCount: 0, // Track number of bounces
                 maxBounces: 6, // More bounces for longer arcs
                 bounceFactor: 0.85, // Higher bounce factor (85% retained) for longer arcs
-                horizontalBounce: 0.9 // Horizontal bounce factor for side-to-side movement
+                horizontalBounce: 0.9, // Horizontal bounce factor for side-to-side movement
+                lastUpdateFrame: frameCount // Track when this barrel was last updated
             });
         }
     }
@@ -186,10 +189,11 @@ document.addEventListener('DOMContentLoaded', function() {
         for (let i = barrels.length - 1; i >= 0; i--) {
             const barrel = barrels[i];
             
-            // Apply gravity for bouncing physics (SLOW MOTION)
+            // Update barrel physics INDEPENDENTLY of player actions
+            // Apply gravity for bouncing physics (SLOW MOTION) - CONSTANT RATE
             barrel.speedY += barrel.gravity;
             
-            // Update position
+            // Update position with CONSTANT speeds
             barrel.y += barrel.speedY;
             barrel.x += barrel.speedX;
             
@@ -261,7 +265,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updatePlayer() {
-        // Handle input - SLOW MOTION
+        // Handle input - SLOW MOTION - INDEPENDENT OF BARRELS
         if (keys['ArrowLeft']) {
             player.speedX = -player.moveSpeed; // 1.5 pixels per frame
             player.direction = -1;
@@ -278,7 +282,7 @@ document.addEventListener('DOMContentLoaded', function() {
             player.jumping = true;
         }
         
-        // Apply gravity (SLOWER)
+        // Apply gravity (SLOWER) - INDEPENDENT OF BARRELS
         if (!player.onGround) {
             player.speedY += 0.4; // Reduced from 0.8 for slower fall
         }
@@ -378,6 +382,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function update() {
         if (!gameRunning || gamePaused) return;
+        
+        frameCount++; // Increment global frame counter
         
         updatePlayer();
         createBarrel();
