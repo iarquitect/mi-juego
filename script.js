@@ -356,14 +356,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Tubo salida (abajo centro-izquierda, azul, 320x160)
     const tubeOutSprite = { x: 320, y: 640, w: 320, h: 160 };
 
-    // --- POSICIONES DE TUBOS EN EL JUEGO ---
-    const tubeInPos = { x: 50, y: 550, w: 160, h: 80 }; // Abajo izquierda (ajustado a escala)
-    const tubeOutPos = { x: 600, y: 60, w: 160, h: 80 }; // Arriba derecha (ajustado a escala)
+    // --- ESCALADO DE SPRITES EN EL CANVAS ---
+    const PLAYER_DRAW_W = 64, PLAYER_DRAW_H = 64;
+    const ENEMY_DRAW_W = 64, ENEMY_DRAW_H = 64;
+    const TUBE_DRAW_W = 96, TUBE_DRAW_H = 48;
 
-    // --- ENEMIGOS EN LA PARTE SUPERIOR ---
+    // --- POSICIONES DE TUBOS EN EL JUEGO (ajustadas) ---
+    const tubeInPos = { x: 30, y: 536, w: TUBE_DRAW_W, h: TUBE_DRAW_H }; // Abajo izquierda
+    const tubeOutPos = { x: 670, y: 80, w: TUBE_DRAW_W, h: TUBE_DRAW_H }; // Arriba derecha
+
+    // --- ENEMIGOS EN LA PARTE SUPERIOR (ajustados) ---
     const enemiesPos = [
-        { x: 500, y: 60 },
-        { x: 350, y: 60 }
+        { x: 600, y: 80 },
+        { x: 500, y: 80 }
     ];
 
     // --- ANIMACIÓN DEL PERSONAJE PRINCIPAL ---
@@ -383,12 +388,12 @@ document.addEventListener('DOMContentLoaded', function() {
             playerAnimFrame = 0;
             playerAnimCounter = 0;
         }
-        // Dibujar sprite del personaje principal
+        // Dibujar sprite del personaje principal escalado
         const sprite = playerSprites[playerAnimFrame];
         ctx.drawImage(
             spriteSheet,
             sprite.x, sprite.y, sprite.w, sprite.h,
-            player.x, player.y, player.width, player.height
+            player.x, player.y, PLAYER_DRAW_W, PLAYER_DRAW_H
         );
     }
 
@@ -417,7 +422,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ctx.drawImage(
                 spriteSheet,
                 sprite.x, sprite.y, sprite.w, sprite.h,
-                pos.x, pos.y, 64, 64 // Escalado a 64x64 en el canvas
+                pos.x, pos.y, ENEMY_DRAW_W, ENEMY_DRAW_H
             );
         }
     }
