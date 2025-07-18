@@ -11,7 +11,7 @@ let gamePaused = false;
 let score = 0;
 let lives = 3;
 let level = 1;
-let barrelTimer = 0;
+let barrilTimer = 0;
 let barrelInterval = 180;
 let frameCount = 0;
 
@@ -200,7 +200,7 @@ function startGame() {
     level = 1;
     barrels.length = 0;
     enemies.length = 0;
-    barrelTimer = 0;
+    barrilTimer = 0;
     frameCount = 0;
     player.x = tubeInPos.x + TUBE_DRAW_W + 20;
     player.y = suelo.y - PLAYER_DRAW_H;
