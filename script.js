@@ -334,20 +334,71 @@ document.addEventListener('DOMContentLoaded', function() {
         alert(`¡Game Over! Puntuación: ${score}`);
     }
 
+    // --- SPRITE SHEET CONFIG ---
+    const spriteSheet = new Image();
+    spriteSheet.src = 'images/spritesheet.png';
+
+    // SPRITE POSITIONS AND SIZES
+    // Personaje principal (abajo derecha, dos frames, 320x160 cada uno)
+    const playerSprites = [
+        { x: 400, y: 480, w: 320, h: 160 }, // frame 1 (naranja)
+        { x: 720, y: 480, w: 320, h: 160 }  // frame 2 (celeste)
+    ];
+    // Enemigos (viejitos, 320x320, fondo amarillo y verde)
+    const enemySprites = [
+        { x: 320, y: 160, w: 320, h: 320 }, // fondo amarillo
+        { x: 320, y: 480, w: 320, h: 320 }  // fondo verde
+    ];
+    // Barril (circular, arriba izquierda, 160x160)
+    const barrelSprite = { x: 0, y: 0, w: 160, h: 160 };
+    // Tubo entrada (abajo izquierda, azul, 320x160)
+    const tubeInSprite = { x: 0, y: 640, w: 320, h: 160 };
+    // Tubo salida (abajo centro-izquierda, azul, 320x160)
+    const tubeOutSprite = { x: 320, y: 640, w: 320, h: 160 };
+
+    // --- POSICIONES DE TUBOS EN EL JUEGO ---
+    const tubeInPos = { x: 50, y: 550, w: 160, h: 80 }; // Abajo izquierda (ajustado a escala)
+    const tubeOutPos = { x: 600, y: 60, w: 160, h: 80 }; // Arriba derecha (ajustado a escala)
+
+    // --- ENEMIGOS EN LA PARTE SUPERIOR ---
+    const enemiesPos = [
+        { x: 500, y: 60 },
+        { x: 350, y: 60 }
+    ];
+
+    // --- ANIMACIÓN DEL PERSONAJE PRINCIPAL ---
+    let playerAnimFrame = 0;
+    let playerAnimCounter = 0;
+    const playerAnimSpeed = 20; // frames entre cambio de animación
+
     function drawPlayer() {
-        // Draw player as a colored rectangle for now
-        ctx.fillStyle = '#ff6b6b';
-        ctx.fillRect(player.x, player.y, player.width, player.height);
-        
-        // Draw direction indicator
-        ctx.fillStyle = '#333';
-        ctx.fillRect(player.x + (player.direction === 1 ? 20 : 0), player.y + 8, 8, 8);
+        // Animación de caminar
+        if (player.speedX !== 0 && player.onGround) {
+            playerAnimCounter++;
+            if (playerAnimCounter > playerAnimSpeed) {
+                playerAnimFrame = (playerAnimFrame + 1) % playerSprites.length;
+                playerAnimCounter = 0;
+            }
+        } else {
+            playerAnimFrame = 0;
+            playerAnimCounter = 0;
+        }
+        // Dibujar sprite del personaje principal
+        const sprite = playerSprites[playerAnimFrame];
+        ctx.drawImage(
+            spriteSheet,
+            sprite.x, sprite.y, sprite.w, sprite.h,
+            player.x, player.y, player.width, player.height
+        );
     }
 
     function drawBarrels() {
-        ctx.fillStyle = '#ffa500';
         for (const barrel of barrels) {
-            ctx.fillRect(barrel.x, barrel.y, barrel.width, barrel.height);
+            ctx.drawImage(
+                spriteSheet,
+                barrelSprite.x, barrelSprite.y, barrelSprite.w, barrelSprite.h,
+                barrel.x, barrel.y, barrel.width, barrel.height
+            );
         }
     }
 
@@ -356,6 +407,34 @@ document.addEventListener('DOMContentLoaded', function() {
         for (const platform of platforms) {
             ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
         }
+    }
+
+    function drawEnemies() {
+        // Enemigos en la parte superior
+        for (let i = 0; i < enemiesPos.length; i++) {
+            const pos = enemiesPos[i];
+            const sprite = enemySprites[i % enemySprites.length];
+            ctx.drawImage(
+                spriteSheet,
+                sprite.x, sprite.y, sprite.w, sprite.h,
+                pos.x, pos.y, 64, 64 // Escalado a 64x64 en el canvas
+            );
+        }
+    }
+
+    function drawTubes() {
+        // Tubo de entrada (abajo)
+        ctx.drawImage(
+            spriteSheet,
+            tubeInSprite.x, tubeInSprite.y, tubeInSprite.w, tubeInSprite.h,
+            tubeInPos.x, tubeInPos.y, tubeInPos.w, tubeInPos.h
+        );
+        // Tubo de salida (arriba)
+        ctx.drawImage(
+            spriteSheet,
+            tubeOutSprite.x, tubeOutSprite.y, tubeOutSprite.w, tubeOutSprite.h,
+            tubeOutPos.x, tubeOutPos.y, tubeOutPos.w, tubeOutPos.h
+        );
     }
 
     function drawBackground() {
@@ -374,9 +453,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // Draw background
         drawBackground();
         
-        // Draw game objects
+        // Draw tubes
+        drawTubes();
+        // Draw platforms
         drawPlatforms();
+        // Draw enemies
+        drawEnemies();
+        // Draw barrels
         drawBarrels();
+        // Draw player
         drawPlayer();
     }
 
