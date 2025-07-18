@@ -122,6 +122,13 @@ document.addEventListener('DOMContentLoaded', function() {
     startButton.addEventListener('click', startGame);
     pauseButton.addEventListener('click', togglePause);
 
+    function clearAllKeys() {
+        // Limpiar todas las teclas para evitar movimiento automático
+        Object.keys(keys).forEach(key => {
+            keys[key] = false;
+        });
+    }
+
     // --- FUNCIONES PRINCIPALES DEL JUEGO ---
 
     function resetPlayer() {
@@ -131,6 +138,9 @@ document.addEventListener('DOMContentLoaded', function() {
         player.speedY = 0;
         player.onGround = false;
         player.jumping = false;
+        
+        // Limpiar el estado de las teclas para evitar movimiento automático
+        clearAllKeys();
     }
 
     function startGame() {
@@ -145,6 +155,7 @@ document.addEventListener('DOMContentLoaded', function() {
         barrelTimer = 0;
         enemyState = 'idle';
         throwAnimationTimer = 0;
+        clearAllKeys(); // Limpiar teclas al iniciar
         resetPlayer();
         updateUI();
         gameLoop();
