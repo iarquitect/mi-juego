@@ -66,15 +66,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Game objects - STAIR-LIKE PLATFORMS
     const platforms = [
-        { x: 0, y: 550, width: 800, height: 50 }, // Ground
-        { x: 100, y: 450, width: 150, height: 20 }, // Platform 1 (left)
-        { x: 350, y: 400, width: 150, height: 20 }, // Platform 2 (right, higher)
-        { x: 200, y: 350, width: 150, height: 20 }, // Platform 3 (left, higher)
-        { x: 450, y: 300, width: 150, height: 20 }, // Platform 4 (right, higher)
-        { x: 300, y: 250, width: 150, height: 20 }, // Platform 5 (left, higher)
-        { x: 550, y: 200, width: 150, height: 20 }, // Platform 6 (right, higher)
-        { x: 400, y: 150, width: 150, height: 20 }, // Platform 7 (left, higher)
-        { x: 650, y: 100, width: 150, height: 20 }, // Platform 8 (right, higher)
+        { x: 0, y: 1040, width: 1920, height: 40 }, // Suelo
+        { x: 300, y: 900, width: 350, height: 24 },
+        { x: 600, y: 760, width: 350, height: 24 },
+        { x: 900, y: 620, width: 350, height: 24 },
+        { x: 1200, y: 480, width: 350, height: 24 },
+        { x: 1500, y: 340, width: 350, height: 24 },
+        { x: 1700, y: 200, width: 180, height: 24 }, // Última plataforma (enemigos)
     ];
 
     const barrels = [];
@@ -356,32 +354,62 @@ document.addEventListener('DOMContentLoaded', function() {
     spriteImgs.tubo_entrada.src = 'images/tubo_entrada.png';
     spriteImgs.tubo_salida.src = 'images/tubo_salida.png';
 
-    // --- ESCALADO DE SPRITES EN EL CANVAS (ajustado) ---
-    const PLAYER_DRAW_W = 48, PLAYER_DRAW_H = 96;
-    const ENEMY_DRAW_W = 64, ENEMY_DRAW_H = 64;
-    const TUBE_DRAW_W = 48, TUBE_DRAW_H = 96;
-    const BARRIL_DRAW_W = 32, BARRIL_DRAW_H = 32;
-    const BARRIL_VISTA_W = 24, BARRIL_VISTA_H = 48;
+    // --- AJUSTAR CANVAS A 1920x1080 ---
+    canvas.width = 1920;
+    canvas.height = 1080;
 
-    // --- POSICIONES DE TUBOS EN EL JUEGO (ajustadas y centradas) ---
-    const tubeInPos = { x: 30, y: 600 - TUBE_DRAW_H, w: TUBE_DRAW_W, h: TUBE_DRAW_H };
-    const tubeOutPos = { x: 800 - 80, y: 80, w: TUBE_DRAW_W, h: TUBE_DRAW_H };
+    // --- ESCALADO DE SPRITES EN EL CANVAS (ajustado a referencia) ---
+    const PLAYER_DRAW_W = 64, PLAYER_DRAW_H = 128;
+    const ENEMY_DRAW_W = 128, ENEMY_DRAW_H = 128;
+    const TUBE_DRAW_W = 96, TUBE_DRAW_H = 192;
+    const BARRIL_DRAW_W = 64, BARRIL_DRAW_H = 64;
+    const BARRIL_VISTA_W = 48, BARRIL_VISTA_H = 96;
 
-    // --- ENEMIGOS EN LA PARTE SUPERIOR (ajustados) ---
-    const enemiesPos = { x: tubeOutPos.x - ENEMY_DRAW_W - 10, y: tubeOutPos.y };
-    const barrilVistaPos = { x: enemiesPos.x - BARRIL_VISTA_W - 10, y: enemiesPos.y + ENEMY_DRAW_H - BARRIL_VISTA_H };
+    // --- POSICIONES DE TUBOS EN EL JUEGO (según referencia) ---
+    const tubeInPos = { x: 40, y: 1080 - TUBE_DRAW_H - 40, w: TUBE_DRAW_W, h: TUBE_DRAW_H };
+    const tubeOutPos = { x: 1920 - TUBE_DRAW_W - 40, y: 120, w: TUBE_DRAW_W, h: TUBE_DRAW_H };
 
-    // --- ESTADO DE ANIMACIÓN DE ENEMIGOS ---
-    let enemigosEstado = 'esperando'; // esperando, tirando, festejando
+    // --- POSICIÓN DEL PERSONAJE PRINCIPAL (inicio) ---
+    player.x = tubeInPos.x + TUBE_DRAW_W + 20;
+    player.y = tubeInPos.y + TUBE_DRAW_H - PLAYER_DRAW_H;
+
+    // --- PLATAFORMAS ESCALONADAS (según referencia) ---
+    // const platforms = [
+    //     { x: 0, y: 1040, width: 1920, height: 40 }, // Suelo
+    //     { x: 300, y: 900, width: 350, height: 24 },
+    //     { x: 600, y: 760, width: 350, height: 24 },
+    //     { x: 900, y: 620, width: 350, height: 24 },
+    //     { x: 1200, y: 480, width: 350, height: 24 },
+    //     { x: 1500, y: 340, width: 350, height: 24 },
+    //     { x: 1700, y: 200, width: 180, height: 24 }, // Última plataforma (enemigos)
+    // ];
+
+    // --- ENEMIGOS EN LA PARTE SUPERIOR DERECHA (según referencia) ---
+    const enemiesPos = { x: 1700 + 40, y: 200 - ENEMY_DRAW_H + 24 };
+    const barrilVistaPos = { x: enemiesPos.x + ENEMY_DRAW_W + 10, y: enemiesPos.y + ENEMY_DRAW_H - BARRIL_VISTA_H };
+
+    // --- TUBO DE SALIDA (arriba derecha) ---
+    // tubeOutPos ya definido
+
+    // --- LÓGICA DE BARRIL EN DIAGONAL Y REBOTE EN PLATAFORMAS ---
     let barrilEnCaida = null;
     let barrilRebotes = 0;
     let barrilTimer = 0;
-    const BARRIL_REBOTES_MAX = 2;
-    const BARRIL_LAUNCH_INTERVAL = 120; // frames entre lanzamientos
+    const BARRIL_REBOTES_MAX = platforms.length - 2; // Rebota en cada plataforma menos el suelo
+    const BARRIL_LAUNCH_INTERVAL = 120;
+    let enemigosEstado = 'esperando';
+
+    // --- ESTADO DE ANIMACIÓN DE ENEMIGOS ---
+    // let enemigosEstado = 'esperando'; // esperando, tirando, festejando
+    // let barrilEnCaida = null;
+    // let barrilRebotes = 0;
+    // let barrilTimer = 0;
+    // const BARRIL_REBOTES_MAX = 2;
+    // const BARRIL_LAUNCH_INTERVAL = 120; // frames entre lanzamientos
 
     // --- CENTRAR PERSONAJE EN EL TUBO DE INICIO ---
-    player.x = tubeInPos.x + (TUBE_DRAW_W - PLAYER_DRAW_W) / 2;
-    player.y = tubeInPos.y + TUBE_DRAW_H - PLAYER_DRAW_H;
+    // player.x = tubeInPos.x + (TUBE_DRAW_W - PLAYER_DRAW_W) / 2;
+    // player.y = tubeInPos.y + TUBE_DRAW_H - PLAYER_DRAW_H;
 
     // --- ANIMACIÓN DEL PERSONAJE PRINCIPAL ---
     let playerAnimFrame = 0;
@@ -389,7 +417,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const playerAnimSpeed = 20; // frames entre cambio de animación
 
     function drawPlayer() {
-        // Elegir sprite según si está saltando o caminando
         let img = player.onGround ? spriteImgs.personaje_caminando : spriteImgs.personaje_saltando;
         ctx.drawImage(img, player.x, player.y, PLAYER_DRAW_W, PLAYER_DRAW_H);
     }
@@ -401,7 +428,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function drawPlatforms() {
-        ctx.fillStyle = '#4a90e2';
+        ctx.fillStyle = '#5ca3d6';
         for (const platform of platforms) {
             ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
         }
@@ -413,7 +440,6 @@ document.addEventListener('DOMContentLoaded', function() {
         else if (enemigosEstado === 'tirando') img = spriteImgs.enemigos_tirandobarril;
         else img = spriteImgs.enemigos_festejando;
         ctx.drawImage(img, enemiesPos.x, enemiesPos.y, ENEMY_DRAW_W, ENEMY_DRAW_H);
-        // Barril al lado de los enemigos si están esperando
         if (enemigosEstado === 'esperando' && !barrilEnCaida) {
             ctx.drawImage(spriteImgs.barril_vista, barrilVistaPos.x, barrilVistaPos.y, BARRIL_VISTA_W, BARRIL_VISTA_H);
         }
@@ -434,7 +460,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function draw() {
-        // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         // Draw background
@@ -459,7 +484,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         updatePlayer();
         updateBarrelAndEnemies();
-        checkGameOver();
         updateUI();
     }
 
