@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
         barrel_view: 'images/barril_vista.png',
         tube_in: 'images/tubo_entrada.png',
         tube_out: 'images/tubo_salida.png',
-        escalera: 'images/escalera_centro_pompidou.png' // Nueva imagen para la escalera
+        escalera: 'images/escalera.png' // Imagen de la escalera del Centro Pompidou
     };
 
     const spriteImgs = {};
