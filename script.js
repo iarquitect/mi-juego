@@ -44,38 +44,45 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- OBJETOS DEL JUEGO ---
     const player = {
-        x: 100, y: 912, width: PLAYER_DRAW_W, height: PLAYER_DRAW_H,
-        speedX: 0, speedY: 0, onGround: false, jumping: false
+        x: 100,
+        y: canvas.height - 40 - PLAYER_DRAW_H, // Posición inicial sobre el suelo
+        width: PLAYER_DRAW_W,
+        height: PLAYER_DRAW_H,
+        speedX: 0,
+        speedY: 0,
+        onGround: false,
+        jumping: false
     };
 
     const enemy = {
-        x: 1650, y: 220, width: ENEMY_DRAW_W, height: ENEMY_DRAW_H
+        x: 1720,
+        y: 200 - ENEMY_DRAW_H,
+        width: ENEMY_DRAW_W,
+        height: ENEMY_DRAW_H
     };
-    
-    // CAMBIO 1: LAS PLATAFORMAS DE COLISIÓN (EL "ESQUELETO" INVISIBLE)
-    // Estas son las plataformas que la física "siente". Debés ajustarlas para que coincidan con tu imagen.
+
+    // PLATAFORMAS DE COLISIÓN (AJUSTAR PARA QUE COINCIDAN VISUALMENTE CON LA ESCALERA)
     const platforms = [
-        { x: 0, y: 1000, width: 1920, height: 80 },   // Suelo base, más grueso
-        { x: 280, y: 900, width: 350, height: 24 },   // Escalón 1
-        { x: 560, y: 780, width: 350, height: 24 },   // Escalón 2
-        { x: 840, y: 660, width: 350, height: 24 },   // Escalón 3
-        { x: 1120, y: 540, width: 350, height: 24 },  // Escalón 4
-        { x: 1400, y: 420, width: 350, height: 24 },  // Escalón 5
-        { x: 1650, y: 348, width: 270, height: 24 }   // Plataforma del enemigo (ajustada para estar debajo de él)
+        { x: 0, y: 1040, width: 1920, height: 40 },   // Suelo
+        { x: 300, y: 900, width: 350, height: 24 },
+        { x: 600, y: 760, width: 350, height: 24 },
+        { x: 900, y: 620, width: 350, height: 24 },
+        { x: 1200, y: 480, width: 350, height: 24 },
+        { x: 1500, y: 340, width: 350, height: 24 },
+        { x: 1700, y: 200, width: 180, height: 24 }    // Plataforma del enemigo
     ];
 
     const barrels = [];
-    
-    // CAMBIO 2: OBJETO PARA DIBUJAR LA IMAGEN DE LA ESCALERA
+
+    // INFORMACIÓN PARA DIBUJAR LA ESCALERA (AJUSTAR PARA QUE CALCE CON LAS PLATAFORMAS)
     const escaleraVisual = {
-        x: 150, // Posición X donde se dibuja la imagen. ¡AJUSTAR!
-        y: 280, // Posición Y donde se dibuja la imagen. ¡AJUSTAR!
-        width: 1600, // Ancho de la imagen. ¡AJUSTAR!
-        height: 725 // Alto de la imagen. ¡AJUSTAR!
+        x: 150,
+        y: 280,
+        width: 1600,
+        height: 725
     };
 
     // --- CARGA DE ASSETS (IMÁGENES) ---
-    // CAMBIO 3: ASEGURARSE QUE 'escalera.png' ESTÉ EN LA LISTA
     const spriteSources = {
         player_walk: 'images/personaje1_caminando.png',
         player_jump: 'images/personaje1_saltando.png',
@@ -126,8 +133,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- FUNCIONES PRINCIPALES DEL JUEGO ---
     function resetPlayer() {
-        player.x = 48 + 10;
-        player.y = 1000 - player.height; // Sobre el suelo base
+        player.x = 100;
+        player.y = canvas.height - 40 - PLAYER_DRAW_H;
         player.speedX = 0;
         player.speedY = 0;
         player.onGround = false;
@@ -169,7 +176,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- LÓGICA DE ACTUALIZACIÓN (UPDATE) ---
-    // ¡SIN CAMBIOS EN LA FÍSICA! Sigue usando el array `platforms`.
     function update() {
         if (!gameRunning || gamePaused) return;
         updatePlayer();
@@ -194,7 +200,10 @@ document.addEventListener('DOMContentLoaded', function() {
             player.jumping = true;
         }
 
-        player.speedY += PLAYER_GRAVITY;
+        if (!player.onGround) {
+            player.speedY += PLAYER_GRAVITY;
+        }
+
         player.x += player.speedX;
         player.y += player.speedY;
 
@@ -235,8 +244,8 @@ document.addEventListener('DOMContentLoaded', function() {
             throwAnimationTimer = 0;
             
             barrels.push({
-                x: enemy.x + enemy.width / 2 - BARREL_DRAW_W / 2,
-                y: enemy.y + enemy.height / 2,
+                x: enemy.x,
+                y: enemy.y + enemy.height,
                 width: BARREL_DRAW_W,
                 height: BARREL_DRAW_H,
                 speedY: 2,
@@ -258,10 +267,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 ) {
                     barrel.y = platform.y - barrel.height;
                     barrel.speedY *= -BARREL_BOUNCE_FACTOR;
-                    if (Math.abs(barrel.speedY) < 1) barrel.speedY = 0;
+                    if (Math.abs(barrel.speedY) < 1) {
+                        barrel.speedY = 0;
+                    }
                 }
             }
-            
+
             if (barrel.x + barrel.width < 0 || barrel.y > canvas.height) {
                 barrels.splice(i, 1);
                 score += 10;
@@ -297,22 +308,21 @@ document.addEventListener('DOMContentLoaded', function() {
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // CAMBIO 4: DIBUJAR LA IMAGEN DE LA ESCALERA
+        // Dibujar la imagen de la escalera
         if (spriteImgs.escalera && spriteImgs.escalera.complete) {
             ctx.drawImage(spriteImgs.escalera, escaleraVisual.x, escaleraVisual.y, escaleraVisual.width, escaleraVisual.height);
         }
 
-        // CAMBIO 5: YA NO DIBUJAMOS LAS PLATAFORMAS RECTANGULARES
+        // **DEBUG: Descomentar para ver las plataformas de colisión**
         /*
-        // Descomentá este bloque para ver las cajas de colisión invisibles
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.4)'; // Rojo semitransparente
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
         for (const platform of platforms) {
             ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
         }
         */
 
         // Tubos
-        ctx.drawImage(spriteImgs.tube_in, 0, 1000 - 96, 48, 96);
+        ctx.drawImage(spriteImgs.tube_in, 0, 1040 - 96, 48, 96);
         ctx.drawImage(spriteImgs.tube_out, canvas.width - 48, enemy.y + enemy.height - 96, 48, 96);
 
         // Enemigo con animación
