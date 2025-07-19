@@ -68,14 +68,23 @@ document.addEventListener('DOMContentLoaded', function() {
         height: ENEMY_DRAW_H
     };
 
-    const platforms = [
-        { x: 0, y: 1040, width: 1920, height: 40 }, // Suelo
-        { x: 300, y: 900, width: 350, height: 24 },
-        { x: 600, y: 760, width: 350, height: 24 },
-        { x: 900, y: 620, width: 350, height: 24 },
-        { x: 1200, y: 480, width: 350, height: 24 },
-        { x: 1500, y: 340, width: 350, height: 24 },
-        { x: 1700, y: 200, width: 180, height: 24 } // Plataforma del enemigo
+    // Configuración de la escalera del Centro Pompidou
+    const escalera = {
+        x: 250, // Posición X de la escalera
+        y: 200, // Posición Y de la escalera
+        width: 1400, // Ancho de la escalera
+        height: 800 // Alto de la escalera
+    };
+
+    // Definir áreas de colisión para la escalera (escalones individuales)
+    const escalonesColision = [
+        { x: 0, y: 1040, width: 1920, height: 40 }, // Suelo base
+        { x: 300, y: 900, width: 350, height: 24 }, // Primer escalón
+        { x: 600, y: 760, width: 350, height: 24 }, // Segundo escalón
+        { x: 900, y: 620, width: 350, height: 24 }, // Tercer escalón
+        { x: 1200, y: 480, width: 350, height: 24 }, // Cuarto escalón
+        { x: 1500, y: 340, width: 350, height: 24 }, // Quinto escalón
+        { x: 1700, y: 200, width: 180, height: 24 }  // Plataforma del enemigo
     ];
 
     const barrels = [];
@@ -90,7 +99,8 @@ document.addEventListener('DOMContentLoaded', function() {
         barrel: 'images/barril_caída.png',
         barrel_view: 'images/barril_vista.png',
         tube_in: 'images/tubo_entrada.png',
-        tube_out: 'images/tubo_salida.png'
+        tube_out: 'images/tubo_salida.png',
+        escalera: 'images/escalera_centro_pompidou.png' // Nueva imagen para la escalera
     };
 
     const spriteImgs = {};
@@ -221,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Colisión con plataformas
         player.onGround = false;
-        for (const platform of platforms) {
+        for (const platform of escalonesColision) {
             if (player.x < platform.x + platform.width &&
                 player.x + player.width > platform.x &&
                 player.y + player.height > platform.y &&
@@ -274,7 +284,7 @@ document.addEventListener('DOMContentLoaded', function() {
             barrel.x += barrel.speedX;
 
             // Colisión con plataformas (rebote)
-            for (const platform of platforms) {
+            for (const platform of escalonesColision) {
                  if (barrel.x < platform.x + platform.width &&
                     barrel.x + barrel.width > platform.x &&
                     barrel.y + barrel.height > platform.y &&
@@ -328,11 +338,8 @@ document.addEventListener('DOMContentLoaded', function() {
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Plataformas
-        ctx.fillStyle = '#d2691e'; // Color chocolate para las vigas
-        for (const platform of platforms) {
-            ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
-        }
+        // Escalera del Centro Pompidou
+        ctx.drawImage(spriteImgs.escalera, escalera.x, escalera.y, escalera.width, escalera.height);
 
         // Tubos
         ctx.drawImage(spriteImgs.tube_in, 0, canvas.height - 40 - 96, 48, 96); // Pegado a la izquierda
@@ -358,6 +365,9 @@ document.addEventListener('DOMContentLoaded', function() {
         for (const barrel of barrels) {
             ctx.drawImage(spriteImgs.barrel, barrel.x, barrel.y, barrel.width, barrel.height);
         }
+
+        // Escalera
+        ctx.drawImage(spriteImgs.escalera, escalera.x, escalera.y, escalera.width, escalera.height);
 
         // Jugador - SOLO UNA IMAGEN
         const playerSprite = player.jumping ? spriteImgs.player_jump : spriteImgs.player_walk;
