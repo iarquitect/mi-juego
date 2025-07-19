@@ -92,7 +92,8 @@ document.addEventListener('DOMContentLoaded', function() {
         barrel_view: 'images/barril_vista.png',
         escalera: 'images/escalera.png',
         tube_in: 'images/tubo_entrada.png',
-        tube_out: 'images/tubo_salida.png'
+        tube_out: 'images/tubo_salida.png',
+        nuevo_fondo: 'images/nuevo-fondo.jpg'
     };
 
     const spriteImgs = {};
@@ -294,12 +295,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- LÓGICA DE DIBUJADO (DRAW) ---
     function draw() {
-        // Fondo
-        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        gradient.addColorStop(0, '#87CEEB');
-        gradient.addColorStop(1, '#4682B4');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // NUEVO FONDO
+        if (spriteImgs.nuevo_fondo && spriteImgs.nuevo_fondo.complete) {
+            // Dibujar el fondo escalado para cubrir todo el canvas
+            ctx.drawImage(spriteImgs.nuevo_fondo, 0, 0, canvas.width, canvas.height);
+        } else {
+            // Fallback: gradiente si la imagen no está cargada
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(1, '#4682B4');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
 
         // Suelo
         ctx.fillStyle = '#D2B48C';
