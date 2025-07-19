@@ -388,12 +388,10 @@ document.addEventListener('DOMContentLoaded', function() {
         ctx.drawImage(playerSprite, player.x, player.y, player.width, player.height);
 
         // DEBUG: Dibujar los segmentos de colisión (opcional - descomenta para ver)
-        /*
         ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
         for (const segmento of escaleraColision) {
             ctx.fillRect(segmento.x, segmento.y, segmento.width, segmento.height);
         }
-        */
     }
 
     function updateUI() {
