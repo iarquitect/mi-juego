@@ -336,7 +336,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Tubos
         ctx.drawImage(spriteImgs.tube_in, 0, canvas.height - 40 - 96, 48, 96); // Pegado a la izquierda
-        ctx.drawImage(spriteImgs.tube_out, canvas.width - 48, 200, 48, 96); // Pegado a la derecha
+        ctx.drawImage(spriteImgs.tube_out, canvas.width - 48, 200 - 96, 48, 96); // A la altura de los enemigos
 
         // Enemigo con animación
         let enemySprite;
