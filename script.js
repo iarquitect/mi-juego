@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const PLAYER_JUMP_SPEED = -11;
     const PLAYER_GRAVITY = 0.28;
     const BARREL_SPAWN_INTERVAL = 180;
-    const BARREL_GRAVITY = 0.17; // Ligeramente reducida
+    const BARREL_GRAVITY = 0.18;
     const BARREL_HORIZONTAL_SPEED = -1.5;
     const BARREL_ROLLING_SPEED = -2.5;
     const BARREL_BOUNCE_FACTOR = 0.5;
@@ -44,33 +44,49 @@ document.addEventListener('DOMContentLoaded', function() {
     const keys = {};
 
     // --- OBJETOS DEL JUEGO ---
-    // CAMBIO 1: JUGADOR INICIA MÁS ARRIBA
     const player = {
-        x: 100, y: 900 - PLAYER_DRAW_H, width: PLAYER_DRAW_W, height: PLAYER_DRAW_H,
-        speedX: 0, speedY: 0, onGround: false, jumping: false
+        x: 100,
+        y: 0, // Se ajustará en startGame
+        width: PLAYER_DRAW_W,
+        height: PLAYER_DRAW_H,
+        speedX: 0,
+        speedY: 0,
+        onGround: false,
+        jumping: false
     };
 
     const enemy = {
-        x: 1650, y: 220, width: ENEMY_DRAW_W, height: ENEMY_DRAW_H
+        x: 1650,
+        y: 220,
+        width: ENEMY_DRAW_W,
+        height: ENEMY_DRAW_H
     };
 
     const escalera = {
-        imgWidth: 1370, imgHeight: 660,
-        x: enemy.x + enemy.width - 1370,
-        y: enemy.y + enemy.height - 20
+        imgWidth: 0, // Se cargará al cargar la imagen
+        imgHeight: 0, // Se cargará al cargar la imagen
+        x: 200, // Ajusta la posición X según sea necesario
+        y: 0 // Se ajustará después de cargar la imagen
     };
 
-    // CAMBIO 2: AJUSTE FINO DE LA RAMPA INVISIBLE
-    const rampaInvisible = {
-        x1: escalera.x + 100,  // Ligeramente ajustado
-        y1: escalera.y + 550, // Ligeramente ajustado
-        x2: escalera.x + 1270, // Ligeramente ajustado
-        y2: escalera.y + 130   // Ligeramente ajustado
-    };
-    const pendienteRampa = (rampaInvisible.y2 - rampaInvisible.y1) / (rampaInvisible.x2 - rampaInvisible.x1);
+    // NUEVO: DEFINICIÓN DE LOS SEGMENTOS DE COLISIÓN DE LA ESCALERA
+    const escaleraColision = [
+        { x: 280, y: 900, width: 280, height: 20 },   // Primer escalón
+        { x: 560, y: 780, width: 280, height: 20 },   // Segundo escalón
+        { x: 840, y: 660, width: 280, height: 20 },   // Tercer escalón
+        { x: 1120, y: 540, width: 280, height: 20 },  // Cuarto escalón
+        { x: 1400, y: 420, width: 280, height: 20 },  // Quinto escalón
+        { x: 1680, y: 300, width: 200, height: 20 }    // Plataforma superior
+        // *** ¡AÑADE Y AJUSTA ESTOS SEGMENTOS PARA QUE COINCIDAN CON TU IMAGEN! ***
+    ];
 
-    // CAMBIO 3: SUELO MÁS GRANDE
-    const suelo = { x: 0, y: escalera.y + escalera.imgHeight - 50, width: 1920, height: 80 };
+    const suelo = {
+        x: 0,
+        y: 0, // Se ajustará después de cargar la imagen
+        width: 1920,
+        height: 0 // Se ajustará después de cargar la imagen
+    };
+
     const plataformaEnemigo = { x: enemy.x, y: enemy.y + enemy.height, width: enemy.width, height: 20 };
 
     const barrels = [];
@@ -101,6 +117,14 @@ document.addEventListener('DOMContentLoaded', function() {
             spriteImgs[key].onload = () => {
                 imagesLoaded++;
                 console.log(`Imagen cargada: ${spriteSources[key]}`);
+                if (key === 'escalera') {
+                    escalera.imgWidth = spriteImgs[key].width;
+                    escalera.imgHeight = spriteImgs[key].height;
+                    escalera.y = canvas.height - escalera.imgHeight;
+                    suelo.y = escalera.y;
+                    suelo.height = canvas.height - suelo.y;
+                    player.y = suelo.y - player.height;
+                }
                 if (imagesLoaded === numImages) {
                     console.log('¡Todos los assets fueron cargados!');
                     callback();
@@ -127,7 +151,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- FUNCIONES PRINCIPALES DEL JUEGO ---
     function resetPlayer() {
         player.x = 48 + 10;
-        // CAMBIO 8: LA POSICIÓN 'Y' SE ESTABLECE AL INICIO
         player.y = suelo.y - player.height;
         player.speedX = 0;
         player.speedY = 0;
@@ -202,19 +225,23 @@ document.addEventListener('DOMContentLoaded', function() {
         if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
 
         player.onGround = false;
-        const playerCenterX = player.x + player.width / 2;
 
-        if (playerCenterX >= rampaInvisible.x1 && playerCenterX <= rampaInvisible.x2) {
-            const groundYenRampa = pendienteRampa * (playerCenterX - rampaInvisible.x1) + rampaInvisible.y1;
-            if (player.y + player.height >= groundYenRampa) {
-                player.y = groundYenRampa - player.height;
+        // Colisión con la escalera (segmentos)
+        for (const segmento of escaleraColision) {
+            if (player.x < segmento.x + segmento.width &&
+                player.x + player.width > segmento.x &&
+                player.y + player.height > segmento.y &&
+                player.y + player.height - player.speedY <= segmento.y + 1
+            ) {
+                player.y = segmento.y - player.height;
                 player.speedY = 0;
                 player.onGround = true;
                 player.jumping = false;
+                break;
             }
         }
 
-        // CAMBIO 4: COLISIÓN CON EL NUEVO SUELO
+        // Colisión con el suelo
         if (player.y + player.height >= suelo.y) {
             player.y = suelo.y - player.height;
             player.speedY = 0;
@@ -222,6 +249,7 @@ document.addEventListener('DOMContentLoaded', function() {
             player.jumping = false;
         }
 
+        // Colisión con la plataforma del enemigo
         if (player.x < plataformaEnemigo.x + plataformaEnemigo.width &&
             player.x + player.width > plataformaEnemigo.x &&
             player.y + player.height >= plataformaEnemigo.y &&
@@ -263,31 +291,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
         for (let i = barrels.length - 1; i >= 0; i--) {
             const barrel = barrels[i];
-            const barrelCenterX = barrel.x + barrel.width / 2;
-
-            if (barrel.onRamp) {
-                barrel.speedX = BARREL_ROLLING_SPEED;
-                const groundYenRampa = pendienteRampa * (barrelCenterX - rampaInvisible.x1) + rampaInvisible.y1;
-                barrel.y = groundYenRampa - barrel.height;
-                barrel.speedY = 0;
-            } else {
-                barrel.speedY += BARREL_GRAVITY;
-                barrel.y += barrel.speedY;
-                barrel.speedX = BARREL_HORIZONTAL_SPEED;
-            }
+            barrel.speedY += BARREL_GRAVITY;
+            barrel.y += barrel.speedY;
             barrel.x += barrel.speedX;
 
-            if (!barrel.onRamp && barrelCenterX >= rampaInvisible.x1 && barrelCenterX <= rampaInvisible.x2) {
-                const groundYenRampa = pendienteRampa * (barrelCenterX - rampaInvisible.x1) + rampaInvisible.y1;
-                if (barrel.y + barrel.height >= groundYenRampa) {
-                    barrel.onRamp = true;
+            // Colisión con la escalera (segmentos)
+            for (const segmento of escaleraColision) {
+                if (barrel.x < segmento.x + segmento.width &&
+                    barrel.x + barrel.width > segmento.x &&
+                    barrel.y + barrel.height > segmento.y &&
+                    barrel.y + barrel.height - barrel.speedY <= segmento.y + 1
+                ) {
+                    barrel.y = segmento.y - barrel.height;
+                    barrel.speedY *= -BARREL_BOUNCE_FACTOR;
+                    if (Math.abs(barrel.speedY) < 1) barrel.speedY = 0;
                 }
             }
 
-            // Colisión inicial con la plataforma del enemigo (para que no caigan adentro)
-            if (!barrel.onRamp && barrel.y < plataformaEnemigo.y + plataformaEnemigo.height && barrel.y + barrel.height > plataformaEnemigo.y && barrel.x + barrel.width > plataformaEnemigo.x && barrel.x < plataformaEnemigo.x + plataformaEnemigo.width) {
-                barrel.y = plataformaEnemigo.y - barrel.height;
+            // Colisión con el suelo
+            if (barrel.y + barrel.height > suelo.y) {
+                barrel.y = suelo.y - barrel.height;
                 barrel.speedY *= -BARREL_BOUNCE_FACTOR;
+                barrel.speedX = BARREL_ROLLING_SPEED; // Comienza a rodar al tocar el suelo
+                if (Math.abs(barrel.speedY) < 1) barrel.speedY = 0;
             }
 
             if (barrel.x + barrel.width < 0 || barrel.y > canvas.height + 50) {
@@ -325,14 +351,14 @@ document.addEventListener('DOMContentLoaded', function() {
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // CAMBIO 5: DIBUJAR EL SUELO EXTENDIDO
+        // Suelo
         ctx.fillStyle = '#D2B48C';
         ctx.fillRect(suelo.x, suelo.y, suelo.width, suelo.height);
 
         // Escalera
         ctx.drawImage(spriteImgs.escalera, escalera.x, escalera.y, escalera.imgWidth, escalera.imgHeight);
 
-        // Tubos CAMBIO 6: POSICIÓN 'Y' DEL TUBO DE ENTRADA AJUSTADA
+        // Tubos
         ctx.drawImage(spriteImgs.tube_in, 0, suelo.y - 96, 48, 96);
         ctx.drawImage(spriteImgs.tube_out, canvas.width - 48, enemy.y + enemy.height - 96, 48, 96);
 
@@ -357,9 +383,17 @@ document.addEventListener('DOMContentLoaded', function() {
             ctx.drawImage(spriteImgs.barrel, barrel.x, barrel.y, barrel.width, barrel.height);
         }
 
-        // Jugador CAMBIO 7: POSICIÓN 'Y' INICIAL DEL JUGADOR YA ESTÁ AJUSTADA
+        // Jugador
         const playerSprite = player.jumping ? spriteImgs.player_jump : spriteImgs.player_walk;
         ctx.drawImage(playerSprite, player.x, player.y, player.width, player.height);
+
+        // DEBUG: Dibujar los segmentos de colisión (opcional - descomenta para ver)
+        /*
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+        for (const segmento of escaleraColision) {
+            ctx.fillRect(segmento.x, segmento.y, segmento.width, segmento.height);
+        }
+        */
     }
 
     function updateUI() {
