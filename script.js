@@ -69,22 +69,22 @@ document.addEventListener('DOMContentLoaded', function() {
         y: 0 // Se ajustará después de cargar la imagen
     };
 
-    // NUEVO: DEFINICIÓN DE LOS SEGMENTOS DE COLISIÓN DE LA ESCALERA
+    // DEFINICIÓN DE LOS SEGMENTOS DE COLISIÓN DE LA ESCALERA
     const escaleraColision = [
-        { x: 280, y: 900, width: 280, height: 20 },   // Primer escalón
-        { x: 560, y: 780, width: 280, height: 20 },   // Segundo escalón
-        { x: 840, y: 660, width: 280, height: 20 },   // Tercer escalón
-        { x: 1120, y: 540, width: 280, height: 20 },  // Cuarto escalón
-        { x: 1400, y: 420, width: 280, height: 20 },  // Quinto escalón
-        { x: 1680, y: 300, width: 200, height: 20 }    // Plataforma superior
+        { x: 280, y: 780, width: 280, height: 20 },   // Primer escalón (ajustado Y)
+        { x: 560, y: 660, width: 280, height: 20 },   // Segundo escalón (ajustado Y)
+        { x: 840, y: 540, width: 280, height: 20 },   // Tercer escalón (ajustado Y)
+        { x: 1120, y: 420, width: 280, height: 20 },  // Cuarto escalón (ajustado Y)
+        { x: 1400, y: 300, width: 280, height: 20 },  // Quinto escalón (ajustado Y)
+        { x: 1680, y: 180, width: 200, height: 20 }    // Plataforma superior (ajustado Y)
         // *** ¡AÑADE Y AJUSTA ESTOS SEGMENTOS PARA QUE COINCIDAN CON TU IMAGEN! ***
     ];
 
     const suelo = {
         x: 0,
-        y: 0, // Se ajustará después de cargar la imagen
+        y: canvas.height - 80, // El suelo siempre estará en la parte inferior
         width: 1920,
-        height: 0 // Se ajustará después de cargar la imagen
+        height: 80
     };
 
     const plataformaEnemigo = { x: enemy.x, y: enemy.y + enemy.height, width: enemy.width, height: 20 };
@@ -120,9 +120,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (key === 'escalera') {
                     escalera.imgWidth = spriteImgs[key].width;
                     escalera.imgHeight = spriteImgs[key].height;
-                    escalera.y = canvas.height - escalera.imgHeight;
-                    suelo.y = escalera.y;
-                    suelo.height = canvas.height - suelo.y;
+                    // Posiciona la escalera RELATIVO al suelo. Ajusta este valor según necesites.
+                    escalera.y = suelo.y - escalera.imgHeight;
                     player.y = suelo.y - player.height;
                 }
                 if (imagesLoaded === numImages) {
@@ -387,11 +386,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const playerSprite = player.jumping ? spriteImgs.player_jump : spriteImgs.player_walk;
         ctx.drawImage(playerSprite, player.x, player.y, player.width, player.height);
 
-        // DEBUG: Dibujar los segmentos de colisión (opcional - descomenta para ver)
+        // DEBUG: Dibujar los segmentos de colisión (opcional)
+        /*
         ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
         for (const segmento of escaleraColision) {
             ctx.fillRect(segmento.x, segmento.y, segmento.width, segmento.height);
         }
+        */
     }
 
     function updateUI() {
