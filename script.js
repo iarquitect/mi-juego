@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const escalera = {
         x: 250, // Posición X de la escalera
         y: 200, // Posición Y de la escalera
-        width: 1400, // Ancho de la escalera
+        width: 1470, // Ancho extendido para llegar a los enemigos
         height: 800 // Alto de la escalera
     };
 
@@ -298,6 +298,21 @@ document.addEventListener('DOMContentLoaded', function() {
                  }
             }
             
+            // Colisión adicional con la parte superior de la escalera (para evitar que atraviesen)
+            if (barrel.x < escalera.x + escalera.width &&
+                barrel.x + barrel.width > escalera.x &&
+                barrel.y + barrel.height > escalera.y &&
+                barrel.y < escalera.y + escalera.height) {
+                // Si el barril está dentro del área de la escalera, verificar colisión superior
+                if (barrel.y + barrel.height > escalera.y && barrel.speedY > 0) {
+                    barrel.y = escalera.y - barrel.height;
+                    barrel.speedY *= -BARREL_BOUNCE_FACTOR;
+                    if (Math.abs(barrel.speedY) < 1) {
+                        barrel.speedY = 0;
+                    }
+                }
+            }
+            
             // Eliminar barriles que salen de la pantalla
             if (barrel.x + barrel.width < 0 || barrel.y > canvas.height) {
                 barrels.splice(i, 1);
@@ -365,9 +380,6 @@ document.addEventListener('DOMContentLoaded', function() {
         for (const barrel of barrels) {
             ctx.drawImage(spriteImgs.barrel, barrel.x, barrel.y, barrel.width, barrel.height);
         }
-
-        // Escalera
-        ctx.drawImage(spriteImgs.escalera, escalera.x, escalera.y, escalera.width, escalera.height);
 
         // Jugador - SOLO UNA IMAGEN
         const playerSprite = player.jumping ? spriteImgs.player_jump : spriteImgs.player_walk;
