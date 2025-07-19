@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- FUNCIONES PRINCIPALES DEL JUEGO ---
 
     function resetPlayer() {
-        player.x = 100;
+        player.x = 48 + 10; // Salir desde el tubo de entrada (48px de ancho + 10px de separación)
         player.y = canvas.height - 40 - PLAYER_DRAW_H;
         player.speedX = 0;
         player.speedY = 0;
@@ -335,8 +335,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Tubos
-        ctx.drawImage(spriteImgs.tube_in, 50, canvas.height - 40 - 96, 48, 96);
-        ctx.drawImage(spriteImgs.tube_out, 1750, 200, 48, 96);
+        ctx.drawImage(spriteImgs.tube_in, 0, canvas.height - 40 - 96, 48, 96); // Pegado a la izquierda
+        ctx.drawImage(spriteImgs.tube_out, canvas.width - 48, 200, 48, 96); // Pegado a la derecha
 
         // Enemigo con animación
         let enemySprite;
