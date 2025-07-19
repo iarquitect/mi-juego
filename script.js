@@ -10,9 +10,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const livesElement = document.getElementById('lives');
     const levelElement = document.getElementById('level');
 
-    // Verificación robusta de elementos
     if (!canvas || !startButton || !pauseButton || !scoreElement || !livesElement || !levelElement) {
-        console.error('Error: No se encontraron uno o más elementos esenciales del juego (canvas, botones, UI).');
+        console.error('Error: Faltan elementos del DOM.');
         return;
     }
 
@@ -21,19 +20,14 @@ document.addEventListener('DOMContentLoaded', function() {
     canvas.height = 1080;
 
     // --- CONFIGURACIÓN Y CONSTANTES DEL JUEGO ---
-
-    // FÍSICA DEL JUGADOR
-    const PLAYER_MOVE_SPEED = 2.5;  // Velocidad de movimiento lateral más fluida
-    const PLAYER_JUMP_SPEED = -10;  // Salto más suave
-    const PLAYER_GRAVITY = 0.25;    // Gravedad más realista y lenta
-
-    // FÍSICA DE LOS BARRILES
-    const BARREL_SPAWN_INTERVAL = 180; // Frames entre barriles (3 segundos a 60fps)
-    const BARREL_GRAVITY = 0.15;
-    const BARREL_HORIZONTAL_SPEED = -2.0;
-    const BARREL_BOUNCE_FACTOR = 0.7; // Energía que retiene al rebotar
-
-    // TAMAÑOS DE DIBUJO (SPRITES)
+    const PLAYER_MOVE_SPEED = 3.0;
+    const PLAYER_JUMP_SPEED = -11;
+    const PLAYER_GRAVITY = 0.28;
+    const BARREL_SPAWN_INTERVAL = 180;
+    const BARREL_GRAVITY = 0.18;
+    const BARREL_HORIZONTAL_SPEED = -1.5;
+    const BARREL_ROLLING_SPEED = -2.5; // Velocidad cuando rueda por la rampa
+    const BARREL_BOUNCE_FACTOR = 0.5;
     const PLAYER_DRAW_W = 64, PLAYER_DRAW_H = 128;
     const ENEMY_DRAW_W = 128, ENEMY_DRAW_H = 128;
     const BARREL_DRAW_W = 64, BARREL_DRAW_H = 64;
@@ -45,47 +39,42 @@ document.addEventListener('DOMContentLoaded', function() {
     let lives = 3;
     let level = 1;
     let barrelTimer = 0;
-    let enemyState = 'idle'; // 'idle', 'throwing', 'celebrating'
+    let enemyState = 'idle';
     let throwAnimationTimer = 0;
     const keys = {};
 
     // --- OBJETOS DEL JUEGO ---
     const player = {
-        x: 100,
-        y: canvas.height - 40 - PLAYER_DRAW_H, // Inicia sobre el suelo
-        width: PLAYER_DRAW_W,
-        height: PLAYER_DRAW_H,
-        speedX: 0,
-        speedY: 0,
-        onGround: false,
-        jumping: false // Agregar estado de salto
+        x: 100, y: 912, width: PLAYER_DRAW_W, height: PLAYER_DRAW_H,
+        speedX: 0, speedY: 0, onGround: false, jumping: false
     };
 
+    // CAMBIO 1: POSICIONAMIENTO PRECISO DE ENEMIGOS Y ESCALERA
     const enemy = {
-        x: 1720,
-        y: 200 - ENEMY_DRAW_H,
-        width: ENEMY_DRAW_W,
-        height: ENEMY_DRAW_H
+        x: 1650, y: 220, width: ENEMY_DRAW_W, height: ENEMY_DRAW_H
     };
 
-    // Configuración de la escalera del Centro Pompidou
     const escalera = {
-        x: 250, // Posición X de la escalera
-        y: 200, // Posición Y de la escalera
-        width: 1470, // Ancho extendido para llegar a los enemigos
-        height: 800 // Alto de la escalera
+        imgWidth: 1370, imgHeight: 660,
+        // Posicionamos la escalera para que su parte superior derecha quede debajo del enemigo
+        x: enemy.x + enemy.width - 1370,
+        y: enemy.y + enemy.height - 20
     };
 
-    // Definir áreas de colisión para la escalera (escalones individuales)
-    const escalonesColision = [
-        { x: 0, y: 1040, width: 1920, height: 40 }, // Suelo base
-        { x: 300, y: 900, width: 350, height: 24 }, // Primer escalón
-        { x: 600, y: 760, width: 350, height: 24 }, // Segundo escalón
-        { x: 900, y: 620, width: 350, height: 24 }, // Tercer escalón
-        { x: 1200, y: 480, width: 350, height: 24 }, // Cuarto escalón
-        { x: 1500, y: 340, width: 350, height: 24 }, // Quinto escalón
-        { x: 1700, y: 200, width: 180, height: 24 }  // Plataforma del enemigo
-    ];
+    // CAMBIO 2: CREACIÓN DE LA RAMPA DE COLISIÓN INVISIBLE
+    // Estas coordenadas definen la superficie de la rampa, deben ajustarse a tu imagen.
+    const rampaInvisible = {
+        x1: escalera.x + 80,  // Coordenada X donde empieza la pendiente
+        y1: escalera.y + 575, // Coordenada Y donde empieza la pendiente
+        x2: escalera.x + 1300, // Coordenada X donde termina la pendiente
+        y2: escalera.y + 110  // Coordenada Y donde termina la pendiente
+    };
+    // Calculamos la pendiente (m) de la rampa una sola vez.
+    const pendienteRampa = (rampaInvisible.y2 - rampaInvisible.y1) / (rampaInvisible.x2 - rampaInvisible.x1);
+
+    // CAMBIO 3: ELIMINAMOS 'escalonesColision'. YA NO SE USA.
+    const suelo = { x: 0, y: 1040, width: 1920, height: 40 };
+    const plataformaEnemigo = { x: enemy.x, y: enemy.y + enemy.height, width: enemy.width, height: 20 };
 
     const barrels = [];
 
@@ -100,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
         barrel_view: 'images/barril_vista.png',
         tube_in: 'images/tubo_entrada.png',
         tube_out: 'images/tubo_salida.png',
-        escalera: 'images/escalera.png' // Imagen de la escalera del Centro Pompidou
+        escalera: 'images/escalera.png'
     };
 
     const spriteImgs = {};
@@ -126,30 +115,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- MANEJO DE ENTRADAS (INPUT) ---
+    // --- MANEJO DE ENTRADAS ---
     document.addEventListener('keydown', (e) => { keys[e.code] = true; });
     document.addEventListener('keyup', (e) => { keys[e.code] = false; });
     startButton.addEventListener('click', startGame);
     pauseButton.addEventListener('click', togglePause);
 
     function clearAllKeys() {
-        // Limpiar todas las teclas para evitar movimiento automático
         Object.keys(keys).forEach(key => {
             keys[key] = false;
         });
     }
 
     // --- FUNCIONES PRINCIPALES DEL JUEGO ---
-
     function resetPlayer() {
-        player.x = 48 + 10; // Salir desde el tubo de entrada (48px de ancho + 10px de separación)
+        player.x = 48 + 10;
         player.y = canvas.height - 40 - PLAYER_DRAW_H;
         player.speedX = 0;
         player.speedY = 0;
         player.onGround = false;
         player.jumping = false;
-        
-        // Limpiar el estado de las teclas para evitar movimiento automático
         clearAllKeys();
     }
 
@@ -165,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function() {
         barrelTimer = 0;
         enemyState = 'idle';
         throwAnimationTimer = 0;
-        clearAllKeys(); // Limpiar teclas al iniciar
+        clearAllKeys();
         resetPlayer();
         updateUI();
         gameLoop();
@@ -176,7 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
         gamePaused = !gamePaused;
         pauseButton.textContent = gamePaused ? 'Reanudar' : 'Pausar';
         if (!gamePaused) {
-            gameLoop(); // Reanudar el loop si se despausa
+            gameLoop();
         }
     }
 
@@ -184,14 +169,11 @@ document.addEventListener('DOMContentLoaded', function() {
         gameRunning = false;
         enemyState = 'celebrating';
         alert(`¡Game Over! Puntuación: ${score}`);
-        // Acá podrías dibujar una pantalla de "Game Over" en el canvas
     }
 
     // --- LÓGICA DE ACTUALIZACIÓN (UPDATE) ---
-
     function update() {
         if (!gameRunning || gamePaused) return;
-
         updatePlayer();
         createAndupdateBarrels();
         updateEnemyAnimation();
@@ -200,7 +182,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updatePlayer() {
-        // Movimiento lateral
+        // Movimiento y salto
         if (keys['ArrowLeft']) {
             player.speedX = -PLAYER_MOVE_SPEED;
         } else if (keys['ArrowRight']) {
@@ -209,7 +191,6 @@ document.addEventListener('DOMContentLoaded', function() {
             player.speedX = 0;
         }
 
-        // Salto
         if (keys['Space'] && player.onGround) {
             player.speedY = PLAYER_JUMP_SPEED;
             player.onGround = false;
@@ -221,35 +202,55 @@ document.addEventListener('DOMContentLoaded', function() {
             player.speedY += PLAYER_GRAVITY;
         }
 
-        // Actualizar posición
         player.x += player.speedX;
         player.y += player.speedY;
-
-        // Colisión con bordes del canvas
+        
+        // Mantener dentro del canvas
         if (player.x < 0) player.x = 0;
         if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
-
-        // Colisión con plataformas
+        
         player.onGround = false;
-        for (const platform of escalonesColision) {
-            if (player.x < platform.x + platform.width &&
-                player.x + player.width > platform.x &&
-                player.y + player.height > platform.y &&
-                player.y + player.height - player.speedY <= platform.y + 1 // El +1 previene "temblores"
-            ) {
-                player.y = platform.y - player.height;
+
+        // CAMBIO 4: NUEVA LÓGICA DE COLISIÓN PARA EL JUGADOR
+        const playerCenterX = player.x + player.width / 2;
+
+        // ¿Está el jugador sobre la rampa?
+        if (playerCenterX >= rampaInvisible.x1 && playerCenterX <= rampaInvisible.x2) {
+            // Calcular la altura del suelo en la rampa en la posición X del jugador
+            const groundYenRampa = pendienteRampa * (playerCenterX - rampaInvisible.x1) + rampaInvisible.y1;
+            
+            if (player.y + player.height >= groundYenRampa) {
+                player.y = groundYenRampa - player.height;
                 player.speedY = 0;
                 player.onGround = true;
-                player.jumping = false; // Resetear estado de salto cuando toca suelo
-                break; // Solo puede estar en una plataforma a la vez
+                player.jumping = false;
             }
+        }
+
+        // Colisión con el suelo base
+        if (player.y + player.height >= suelo.y) {
+            player.y = suelo.y - player.height;
+            player.speedY = 0;
+            player.onGround = true;
+            player.jumping = false;
+        }
+
+        // Colisión con la plataforma del enemigo
+        if (player.x < plataformaEnemigo.x + plataformaEnemigo.width &&
+            player.x + player.width > plataformaEnemigo.x &&
+            player.y + player.height >= plataformaEnemigo.y &&
+            player.y < plataformaEnemigo.y) {
+            player.y = plataformaEnemigo.y - player.height;
+            player.speedY = 0;
+            player.onGround = true;
+            player.jumping = false;
         }
     }
 
     function updateEnemyAnimation() {
         if (enemyState === 'throwing') {
             throwAnimationTimer++;
-            if (throwAnimationTimer > 30) { // 0.5 segundos a 60fps
+            if (throwAnimationTimer > 30) {
                 enemyState = 'idle';
                 throwAnimationTimer = 0;
             }
@@ -257,66 +258,62 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function createAndupdateBarrels() {
-        // Crear nuevos barriles
+        // Crear barriles
         barrelTimer++;
         if (barrelTimer >= BARREL_SPAWN_INTERVAL) {
             barrelTimer = 0;
             enemyState = 'throwing';
             throwAnimationTimer = 0;
             
-            // Crear barril desde la posición correcta del enemigo
             barrels.push({
-                x: enemy.x + enemy.width / 2 - BARREL_DRAW_W / 2, // Centrado en el enemigo
-                y: enemy.y + enemy.height / 2, // Desde la mitad del enemigo
+                x: enemy.x + enemy.width / 2 - BARREL_DRAW_W / 2,
+                y: enemy.y + enemy.height / 2,
                 width: BARREL_DRAW_W,
                 height: BARREL_DRAW_H,
-                speedY: 2,
                 speedX: BARREL_HORIZONTAL_SPEED,
+                speedY: 2,
+                onRamp: false
             });
         }
 
-        // Actualizar barriles existentes
+        // Actualizar barriles
         for (let i = barrels.length - 1; i >= 0; i--) {
             const barrel = barrels[i];
+            const barrelCenterX = barrel.x + barrel.width / 2;
 
-            barrel.speedY += BARREL_GRAVITY;
-            barrel.y += barrel.speedY;
+            // CAMBIO 5: NUEVA LÓGICA DE COLISIÓN PARA BARRILES
+            if (barrel.onRamp) {
+                // Si está en la rampa, rueda siguiendo la pendiente
+                barrel.speedX = BARREL_ROLLING_SPEED;
+                const groundYenRampa = pendienteRampa * (barrelCenterX - rampaInvisible.x1) + rampaInvisible.y1;
+                barrel.y = groundYenRampa - barrel.height;
+                barrel.speedY = 0; // No hay gravedad vertical en la rampa
+            } else {
+                // Si no, cae con gravedad normal
+                barrel.speedY += BARREL_GRAVITY;
+                barrel.y += barrel.speedY;
+                barrel.speedX = BARREL_HORIZONTAL_SPEED;
+            }
             barrel.x += barrel.speedX;
 
-            // Colisión con plataformas (rebote)
-            for (const platform of escalonesColision) {
-                 if (barrel.x < platform.x + platform.width &&
-                    barrel.x + barrel.width > platform.x &&
-                    barrel.y + barrel.height > platform.y &&
-                    barrel.y + barrel.height - barrel.speedY <= platform.y + 1
-                 ) {
-                    barrel.y = platform.y - barrel.height;
-                    barrel.speedY *= -BARREL_BOUNCE_FACTOR; // Rebota perdiendo energía
-                    if (Math.abs(barrel.speedY) < 1) { // Si el rebote es muy débil, rueda
-                        barrel.speedY = 0;
-                    }
-                 }
-            }
-            
-            // Colisión adicional con la parte superior de la escalera (para evitar que atraviesen)
-            if (barrel.x < escalera.x + escalera.width &&
-                barrel.x + barrel.width > escalera.x &&
-                barrel.y + barrel.height > escalera.y &&
-                barrel.y < escalera.y + escalera.height) {
-                // Si el barril está dentro del área de la escalera, verificar colisión superior
-                if (barrel.y + barrel.height > escalera.y && barrel.speedY > 0) {
-                    barrel.y = escalera.y - barrel.height;
-                    barrel.speedY *= -BARREL_BOUNCE_FACTOR;
-                    if (Math.abs(barrel.speedY) < 1) {
-                        barrel.speedY = 0;
-                    }
+            // ¿El barril acaba de tocar la rampa?
+            if (!barrel.onRamp && barrelCenterX >= rampaInvisible.x1 && barrelCenterX <= rampaInvisible.x2) {
+                const groundYenRampa = pendienteRampa * (barrelCenterX - rampaInvisible.x1) + rampaInvisible.y1;
+                if (barrel.y + barrel.height >= groundYenRampa) {
+                    barrel.onRamp = true; // ¡Ahora está en la rampa!
                 }
             }
             
-            // Eliminar barriles que salen de la pantalla
+            // Colisión con la plataforma del enemigo (para el inicio de la caída)
+            if (!barrel.onRamp && barrel.y + barrel.height >= plataformaEnemigo.y && barrel.x > plataformaEnemigo.x) {
+                barrel.y = plataformaEnemigo.y - barrel.height;
+                barrel.speedY *= -BARREL_BOUNCE_FACTOR;
+            }
+
+            // Eliminar barriles que se van
             if (barrel.x + barrel.width < 0 || barrel.y > canvas.height) {
                 barrels.splice(i, 1);
-                score += 10; // Dar puntos por esquivar
+                score += 10;
             }
         }
     }
@@ -330,12 +327,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 player.y < barrel.y + barrel.height &&
                 player.y + player.height > barrel.y)
             {
-                barrels.splice(i, 1); // El barril desaparece
+                barrels.splice(i, 1);
                 lives--;
                 if (lives <= 0) {
                     gameOver();
                 } else {
-                    // Reiniciar solo el jugador, no todo el juego
                     resetPlayer();
                 }
                 break;
@@ -344,21 +340,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- LÓGICA DE DIBUJADO (DRAW) ---
-
     function draw() {
         // Fondo
         const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        gradient.addColorStop(0, '#87CEEB'); // Cielo celeste
-        gradient.addColorStop(1, '#4682B4'); // Acero azulado
+        gradient.addColorStop(0, '#87CEEB');
+        gradient.addColorStop(1, '#4682B4');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Escalera del Centro Pompidou
-        ctx.drawImage(spriteImgs.escalera, escalera.x, escalera.y, escalera.width, escalera.height);
+        
+        // Suelo
+        ctx.fillStyle = '#D2B48C';
+        ctx.fillRect(suelo.x, suelo.y, suelo.width, suelo.height);
+        
+        // Escalera (imagen)
+        ctx.drawImage(spriteImgs.escalera, escalera.x, escalera.y, escalera.imgWidth, escalera.imgHeight);
 
         // Tubos
-        ctx.drawImage(spriteImgs.tube_in, 0, canvas.height - 40 - 96, 48, 96); // Pegado a la izquierda
-        ctx.drawImage(spriteImgs.tube_out, canvas.width - 48, 200 - 96, 48, 96); // A la altura de los enemigos
+        ctx.drawImage(spriteImgs.tube_in, 0, canvas.height - 40 - 96, 48, 96);
+        ctx.drawImage(spriteImgs.tube_out, canvas.width - 48, 200 - 96, 48, 96);
 
         // Enemigo con animación
         let enemySprite;
@@ -381,7 +380,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ctx.drawImage(spriteImgs.barrel, barrel.x, barrel.y, barrel.width, barrel.height);
         }
 
-        // Jugador - SOLO UNA IMAGEN
+        // Jugador
         const playerSprite = player.jumping ? spriteImgs.player_jump : spriteImgs.player_walk;
         ctx.drawImage(playerSprite, player.x, player.y, player.width, player.height);
     }
@@ -393,7 +392,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- BUCLE PRINCIPAL DEL JUEGO ---
-
     function gameLoop() {
         update();
         draw();
@@ -404,10 +402,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- INICIO ---
-    // El juego no se inicia automáticamente, espera al precargador
     preloadAssets(() => {
         console.log('Listo para jugar. Presioná "Start".');
-        // Dibuja el estado inicial para que no se vea una pantalla en blanco
         updateUI();
         draw();
     });
